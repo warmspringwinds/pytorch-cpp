@@ -1,0 +1,3 @@
+[submodule "ATen"]
+	path = ATen
+	url = git@github.com:warmspringwinds/ATen.git
