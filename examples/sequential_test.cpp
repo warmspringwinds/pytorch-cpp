@@ -1,7 +1,6 @@
 /*
-Example shows how an already allocated memory can be reused.
-It's a common case when the memory has to be used without transferring it to CPU
-and back to GPU.
+Example shows how to define an architecture, visualize it later on
+using std tools, and get a forward pass from that model.
 */
 
 #include "ATen/ATen.h"
@@ -127,11 +126,29 @@ int main()
 	net->add(std::make_shared<pytorch::ReLU>());
 	net->add(std::make_shared<pytorch::ReLU>());
 
+	//Visualize the architecture
+	std::cout << net->tostring() << std::endl;
+
 	Tensor dummy_input = CUDA(kFloat).ones({3, 4}) * (-10);
 
 	Tensor output = net->forward(dummy_input);
 
+	// Print out the results -- should be zeros, because we applied RELU
 	std::cout << output << std::endl;
+
+	// Overall output:
+
+	// nn.Sequential {
+	//   (1) cunn.ReLU
+	//   (2) cunn.ReLU
+	//   (3) cunn.ReLU
+	// }
+
+	//  0  0  0  0
+	//  0  0  0  0
+	//  0  0  0  0
+	// [ CUDAFloatTensor{3,4} ]
+
 
 	return 0;
 }
