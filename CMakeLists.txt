@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.0)
 project(boo)
 
-#set(CMAKE_CURRENT_SOURCE_DIR /ATen /home/mvp/platform/repos/pytorch_sandbox/ATen)
-#set(ATen_BINARY_DIR  /home/mvp/platform/repos/pytorch_sandbox/ATen/build)
+set(ATen_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/ATen)
+set(ATen_BINARY_DIR  ${CMAKE_CURRENT_SOURCE_DIR}/ATen/build)
 
 # C++11
 if(CMAKE_VERSION VERSION_LESS "3.1")
@@ -13,32 +13,36 @@ endif()
 
 find_package(CUDA 5.5)
 
-# Build the ATen dependency
-add_subdirectory(ATen)
-
 include_directories(
   # dense
-  ${CMAKE_CURRENT_SOURCE_DIR}/ATen/lib/TH
-  ${CMAKE_CURRENT_SOURCE_DIR}/ATen/lib/THC
-  ${CMAKE_CURRENT_BINARY_DIR}/ATen/lib/TH
-  ${CMAKE_CURRENT_BINARY_DIR}/ATen/lib/THC
+  ${ATen_SOURCE_DIR}/lib/TH
+  ${ATen_SOURCE_DIR}/lib/THC
+  ${ATen_BINARY_DIR}/lib/TH
+  ${ATen_BINARY_DIR}/lib/THC
   # sparse
-  ${CMAKE_CURRENT_SOURCE_DIR}/ATen/lib/THS
-  ${CMAKE_CURRENT_SOURCE_DIR}/ATen/lib/THCS
-  ${CMAKE_CURRENT_BINARY_DIR}/ATen/lib/THS
-  ${CMAKE_CURRENT_BINARY_DIR}/ATen/lib/THCS
+  ${ATen_SOURCE_DIR}/lib/THS
+  ${ATen_SOURCE_DIR}/lib/THCS
+  ${ATen_BINARY_DIR}/lib/THS
+  ${ATen_BINARY_DIR}/lib/THCS
 
-  ${CMAKE_CURRENT_SOURCE_DIR}/ATen/lib
-  ${CMAKE_CURRENT_BINARY_DIR}/ATen/lib)
-
-include_directories(
-${CMAKE_CURRENT_SOURCE_DIR}/ATen/lib/THNN
-${CMAKE_CURRENT_SOURCE_DIR}/ATen/lib/THCUNN)
+  ${ATen_SOURCE_DIR}/lib
+  ${ATen_BINARY_DIR}/lib)
 
 include_directories(
-${CMAKE_CURRENT_SOURCE_DIR}/ATen/src
-${CMAKE_CURRENT_BINARY_DIR}/ATen/src/ATen)
+${ATen_SOURCE_DIR}/lib/THNN
+${ATen_SOURCE_DIR}/lib/THCUNN)
+
+include_directories(
+${ATen_SOURCE_DIR}/src
+${ATen_BINARY_DIR}/src/ATen)
 
 INCLUDE_DIRECTORIES(${CUDA_INCLUDE_DIRS})
 
-add_subdirectory(examples)
+ADD_EXECUTABLE(read_allocated_gpu_memory examples/read_allocated_gpu_memory.cpp)
+TARGET_LINK_LIBRARIES(read_allocated_gpu_memory ${ATen_BINARY_DIR}/src/ATen/libATen.so.1 ${CUDA_LIBRARIES})
+
+ADD_EXECUTABLE(sequential_test examples/sequential_test.cpp)
+TARGET_LINK_LIBRARIES(sequential_test ${ATen_BINARY_DIR}/src/ATen/libATen.so.1 ${CUDA_LIBRARIES})
+
+
+#add_subdirectory(examples)
