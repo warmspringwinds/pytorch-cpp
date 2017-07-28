@@ -65,6 +65,7 @@ namespace pytorch
 			
 			const std::string tostring() const
 			{
+
 				std::stringstream s;
 
 				s << "nn.Sequential {\n";
@@ -86,11 +87,33 @@ namespace pytorch
 			  
 			void add(Module::Ptr module)
 			{
+
 				modules.push_back(module);
 			}
 			
 
 			std::vector<Module::Ptr> modules;
+	};
+
+
+	/*
+	 * nn.ReLU
+	 */
+	
+	class ReLU : public Module 
+	{
+		public:
+
+			ReLU() {};
+			~ReLU() {};
+
+			Tensor forward(Tensor input) 
+			{ 
+				Threshold_updateOutput(input, input, 0, 0, true) ;
+  				return input; 
+			};
+
+			const std::string tostring() const { return std::string("cunn.ReLU"); }
 	};
 
 
