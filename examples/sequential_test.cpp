@@ -23,9 +23,9 @@ namespace pytorch
 
 		  typedef std::shared_ptr<Module> Ptr;
 
-		  Module();
+		  Module() {};
 
-		  ~Module();
+		  ~Module() {};
 
 		  virtual Tensor forward(Tensor input) = 0;
 
@@ -46,9 +46,9 @@ namespace pytorch
 
 			typedef std::shared_ptr<Sequential> Ptr;
 
-			Sequential() : Module() {}
+			Sequential() {};
 
-			~Sequential() {}
+			~Sequential() {};
 
 			Tensor forward(Tensor input)
 			{
@@ -99,7 +99,7 @@ namespace pytorch
 	/*
 	 * nn.ReLU
 	 */
-	
+
 	class ReLU : public Module 
 	{
 		public:
@@ -122,8 +122,16 @@ namespace pytorch
 int main()
 {
 
+	auto net = std::make_shared<pytorch::Sequential>();
+	net->add(std::make_shared<pytorch::ReLU>());
+	net->add(std::make_shared<pytorch::ReLU>());
+	net->add(std::make_shared<pytorch::ReLU>());
 
+	Tensor dummy_input = CUDA(kFloat).ones({3, 4}) * (-10);
 
+	Tensor output = net->forward(dummy_input);
+
+	std::cout << output << std::endl;
 
 	return 0;
 }
