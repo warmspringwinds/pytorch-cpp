@@ -208,17 +208,16 @@ namespace torch
             Tensor output = TENSOR_DEFAULT_TYPE.tensor();
 
             SpatialConvolutionMM_updateOutput(input,
-											  output,
-											  convolution_weight,
-											  bias_weight,
-											  finput,
-											  fgradInput,
-											  kernel_width,
-											  kernel_height,
-											  stride_width,
-											  stride_height,
-											  padding_width,
-											  padding_height);
+                                              output,
+                                              convolution_weightbias_weight,
+                                              finput,
+                                              fgradInput,
+                                              kernel_width,
+                                              kernel_height,
+                                              stride_width,
+                                              stride_height,
+                                              padding_width,
+                                              padding_height);
             return output; 
          };
 
@@ -229,7 +228,7 @@ namespace torch
 
 int main()
 {
-
+  
    auto net = std::make_shared<torch::Sequential>();
    net->add( std::make_shared<torch::ReLU>() );
    net->add( std::make_shared<torch::Conv2d>(3, 10, 3, 3) );
