@@ -4,18 +4,21 @@ using std tools, and get a forward pass from that model.
 */
 
 #include "ATen/ATen.h"
+#include "ATen/Type.h"
 #include <sstream>
+
+#define TENSOR_DEFAULT_TYPE CPU(kFloat)
 
 using namespace at; // assumed in the following
 
-namespace pytorch 
+namespace torch 
 {
 
 	/*
 	 * Abstract class as nn.Module
 	 */
 
-	class Module 
+	class Module
 	{
 
 		public:
@@ -30,8 +33,6 @@ namespace pytorch
 
 		  virtual const std::string tostring() const { return std::string("name not defined"); }
 
-
-		  Tensor output;
 	};
 
 
@@ -112,7 +113,115 @@ namespace pytorch
   				return input; 
 			};
 
-			const std::string tostring() const { return std::string("cunn.ReLU"); }
+			const std::string tostring() const { return std::string("nn.ReLU"); }
+	};
+
+
+	class Conv2d : public Module
+	{
+
+		public:
+
+			Tensor convolution_weight;
+			Tensor bias_weight;
+			Tensor finput;
+			Tensor fgradInput;
+
+			int in_channels;
+	 		int out_channels;
+	 		int kernel_width;
+	 		int kernel_height;
+	 		int stride_width;
+	 		int stride_height;
+	 		int dilation_width;
+	 		int dilation_height;
+	 		int padding_width;
+	 		int padding_height;
+	 		int groups;
+	 		int bias;
+
+			Conv2d( int in_channels,
+			 		int out_channels,
+			 		int kernel_width,
+			 		int kernel_height,
+			 		int stride_width=1,
+			 		int stride_height=1,
+			 		int padding_width=0,
+			 		int padding_height=0,
+			 		int dilation_width=1,
+			 		int dilation_height=1,
+			 		int groups=1,
+			 		int bias=true) :
+
+					in_channels(in_channels),
+					out_channels(out_channels),
+					kernel_width(kernel_width),
+					kernel_height(kernel_height),
+					stride_width(stride_width),
+					stride_height(stride_height),
+					padding_width(padding_width),
+					padding_height(padding_height),
+					dilation_width(dilation_width),
+					dilation_height(dilation_height),
+					groups(groups),
+					bias(bias)
+
+			{
+
+				// Initialize weights here
+
+				convolution_weight = TENSOR_DEFAULT_TYPE.zeros({out_channels, in_channels, kernel_width, kernel_height});
+				bias_weight = TENSOR_DEFAULT_TYPE.zeros({out_channels});
+
+				// These variables are not needed for forward inferece,
+				// but we need them in order to call an underlying C
+				// function. Later they will be used for backward pass
+				finput = TENSOR_DEFAULT_TYPE.tensor();
+				fgradInput = TENSOR_DEFAULT_TYPE.tensor();
+
+			};
+
+			~Conv2d() {};
+
+			const std::string tostring() const
+			{
+
+				std::stringstream string_stream;
+
+				string_stream << "nn.Conv2d( "
+							  << "in_channels=" << std::to_string(in_channels) << " "
+							  << "out_channels=" << std::to_string(out_channels) << " "
+							  << "kernel_size=(" << std::to_string(kernel_width) << ", " << std::to_string(kernel_height) << ") "
+							  << "stride=(" << std::to_string(stride_width) << ", " << std::to_string(stride_height) << ") "
+							  << "padding=(" << std::to_string(padding_width) << ", " << std::to_string(padding_height) << ") "
+							  << "dilation=(" << std::to_string(dilation_width) << ", " << std::to_string(dilation_height) << ") "
+							  << "groups=" << std::to_string(groups) << " "
+							  << "bias=" << std::to_string(bias) << " )";
+
+				return string_stream.str();
+
+			};
+
+			Tensor forward(Tensor input) 
+			{ 
+
+				Tensor output = TENSOR_DEFAULT_TYPE.tensor();
+
+				SpatialConvolutionMM_updateOutput(input,
+												  output,
+												  convolution_weight,
+												  bias_weight,
+												  finput,
+												  fgradInput,
+												  kernel_width,
+												  kernel_height,
+												  stride_width,
+												  stride_height,
+												  padding_width,
+												  padding_height);
+				return output; 
+			};
+
 	};
 
 
@@ -121,15 +230,15 @@ namespace pytorch
 int main()
 {
 
-	auto net = std::make_shared<pytorch::Sequential>();
-	net->add(std::make_shared<pytorch::ReLU>());
-	net->add(std::make_shared<pytorch::ReLU>());
-	net->add(std::make_shared<pytorch::ReLU>());
+	auto net = std::make_shared<torch::Sequential>();
+	net->add( std::make_shared<torch::ReLU>() );
+	net->add( std::make_shared<torch::Conv2d>(3, 10, 3, 3) );
+	net->add( std::make_shared<torch::ReLU>() );
 
 	//Visualize the architecture
 	std::cout << net->tostring() << std::endl;
 
-	Tensor dummy_input = CUDA(kFloat).ones({3, 4}) * (-10);
+	Tensor dummy_input = TENSOR_DEFAULT_TYPE.ones({1, 3, 24, 24}) * (-10);
 
 	Tensor output = net->forward(dummy_input);
 
