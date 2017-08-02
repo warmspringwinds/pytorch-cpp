@@ -238,7 +238,7 @@ int main()
 	//Visualize the architecture
 	std::cout << net->tostring() << std::endl;
 
-	Tensor dummy_input = TENSOR_DEFAULT_TYPE.ones({1, 3, 24, 24}) * (-10);
+	Tensor dummy_input = TENSOR_DEFAULT_TYPE.ones({1, 3, 5, 5}) * (-10);
 
 	Tensor output = net->forward(dummy_input);
 
@@ -247,16 +247,62 @@ int main()
 
 	// Overall output:
 
-	// nn.Sequential {
-	//   (1) cunn.ReLU
-	//   (2) cunn.ReLU
-	//   (3) cunn.ReLU
+	// 	nn.Sequential {
+	//   (1) nn.ReLU
+	//   (2) nn.Conv2d( in_channels=3 out_channels=10 kernel_size=(3, 3) stride=(1, 1) padding=(0, 0) dilation=(1, 1) groups=1 bias=1 )
+	//   (3) nn.ReLU
 	// }
 
-	//  0  0  0  0
-	//  0  0  0  0
-	//  0  0  0  0
-	// [ CUDAFloatTensor{3,4} ]
+	// (1,1,.,.) = 
+	//   0  0  0
+	//   0  0  0
+	//   0  0  0
+
+	// (1,2,.,.) = 
+	//   0  0  0
+	//   0  0  0
+	//   0  0  0
+
+	// (1,3,.,.) = 
+	//   0  0  0
+	//   0  0  0
+	//   0  0  0
+
+	// (1,4,.,.) = 
+	//   0  0  0
+	//   0  0  0
+	//   0  0  0
+
+	// (1,5,.,.) = 
+	//   0  0  0
+	//   0  0  0
+	//   0  0  0
+
+	// (1,6,.,.) = 
+	//   0  0  0
+	//   0  0  0
+	//   0  0  0
+
+	// (1,7,.,.) = 
+	//   0  0  0
+	//   0  0  0
+	//   0  0  0
+
+	// (1,8,.,.) = 
+	//   0  0  0
+	//   0  0  0
+	//   0  0  0
+
+	// (1,9,.,.) = 
+	//   0  0  0
+	//   0  0  0
+	//   0  0  0
+
+	// (1,10,.,.) = 
+	//   0  0  0
+	//   0  0  0
+	//   0  0  0
+	// [ CPUFloatTensor{1,10,3,3} ]
 
 
 	return 0;
