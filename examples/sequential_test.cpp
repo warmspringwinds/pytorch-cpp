@@ -100,7 +100,7 @@ namespace torch
     * nn.ReLU
     */
 
-   class ReLU : public Module 
+   class ReLU : public Module
    {
       public:
 
@@ -127,7 +127,7 @@ namespace torch
          Tensor finput;
          Tensor fgradInput;
 
-         int in_channels;
+          int in_channels;
           int out_channels;
           int kernel_width;
           int kernel_height;
@@ -139,8 +139,9 @@ namespace torch
           int padding_height;
           int groups;
           int bias;
+          bool dilated;
 
-         Conv2d( int in_channels,
+          Conv2d( int in_channels,
                 int out_channels,
                 int kernel_width,
                 int kernel_height,
@@ -153,20 +154,19 @@ namespace torch
                 int groups=1,
                 int bias=true) :
 
-               in_channels(in_channels),
-               out_channels(out_channels),
-               kernel_width(kernel_width),
-               kernel_height(kernel_height),
-               stride_width(stride_width),
-               stride_height(stride_height),
-               padding_width(padding_width),
-               padding_height(padding_height),
-               dilation_width(dilation_width),
-               dilation_height(dilation_height),
-               groups(groups),
-               bias(bias)
-
-         {
+                in_channels(in_channels),
+                out_channels(out_channels),
+                kernel_width(kernel_width),
+                kernel_height(kernel_height),
+                stride_width(stride_width),
+                stride_height(stride_height),
+                padding_width(padding_width),
+                padding_height(padding_height),
+                dilation_width(dilation_width),
+                dilation_height(dilation_height),
+                groups(groups),
+                bias(bias)
+          {
 
             // Initialize weights here
 
@@ -179,37 +179,68 @@ namespace torch
             finput = TENSOR_DEFAULT_TYPE.tensor();
             fgradInput = TENSOR_DEFAULT_TYPE.tensor();
 
-         };
 
-         ~Conv2d() {};
+            // There are separate functions for dilated and non-dilated convolutions
+            dilated = false;
 
-         const std::string tostring() const
-         {
+            if( (dilation_width > 1) || (dilation_height > 1) )
+            {
+              dilated = true;
+            }
+
+          };
+
+          ~Conv2d() {};
+
+          const std::string tostring() const
+          {
 
             std::stringstream string_stream;
 
             string_stream << "nn.Conv2d( "
-                       << "in_channels=" << std::to_string(in_channels) << " "
-                       << "out_channels=" << std::to_string(out_channels) << " "
-                       << "kernel_size=(" << std::to_string(kernel_width) << ", " << std::to_string(kernel_height) << ") "
-                       << "stride=(" << std::to_string(stride_width) << ", " << std::to_string(stride_height) << ") "
-                       << "padding=(" << std::to_string(padding_width) << ", " << std::to_string(padding_height) << ") "
-                       << "dilation=(" << std::to_string(dilation_width) << ", " << std::to_string(dilation_height) << ") "
-                       << "groups=" << std::to_string(groups) << " "
-                       << "bias=" << std::to_string(bias) << " )";
+                          << "in_channels=" << std::to_string(in_channels) << " "
+                          << "out_channels=" << std::to_string(out_channels) << " "
+                          << "kernel_size=(" << std::to_string(kernel_width) << ", " << std::to_string(kernel_height) << ") "
+                          << "stride=(" << std::to_string(stride_width) << ", " << std::to_string(stride_height) << ") "
+                          << "padding=(" << std::to_string(padding_width) << ", " << std::to_string(padding_height) << ") "
+                          << "dilation=(" << std::to_string(dilation_width) << ", " << std::to_string(dilation_height) << ") "
+                          << "groups=" << std::to_string(groups) << " "
+                          << "bias=" << std::to_string(bias) << " )";
 
             return string_stream.str();
 
-         };
+          };
 
-         Tensor forward(Tensor input) 
-         { 
+          Tensor forward(Tensor input) 
+          { 
 
             Tensor output = TENSOR_DEFAULT_TYPE.tensor();
 
-            SpatialConvolutionMM_updateOutput(input,
+            if (dilated)
+            {
+
+              // SpatialDilatedConvolution_updateOutput(const Tensor & input,
+              //  const Tensor & output,
+              //   const Tensor & weight,
+              //    const Tensor & bias,
+              //     const Tensor & columns,
+              //      const Tensor & ones,
+              //       int kW,
+              //        int kH,
+              //         int dW,
+              //          int dH,
+              //           int padW,
+              //            int padH,
+              //             int dilationW,
+              //              int dilationH);
+            }
+            else
+            {
+
+              SpatialConvolutionMM_updateOutput(input,
                                               output,
-                                              convolution_weightbias_weight,
+                                              convolution_weight,
+                                              bias_weight,
                                               finput,
                                               fgradInput,
                                               kernel_width,
@@ -218,21 +249,112 @@ namespace torch
                                               stride_height,
                                               padding_width,
                                               padding_height);
-            return output; 
-         };
+            }
 
-   };
+            
+            return output; 
+          };
+    };
+
+    class BatchNorm2d : public Module
+    {
+      public:
+
+        Tensor gamma_weight;
+        Tensor beta_bias_weight;
+        Tensor running_mean;
+        Tensor running_var;
+        Tensor save_mean;
+        Tensor save_std;
+        int num_features;
+        bool affine;
+        bool training;
+        double momentum;
+        double eps;
+
+
+
+        BatchNorm2d( int num_features,
+                     double eps=1e-5,
+                     double momentum=0.1,
+                     bool affine=true,
+                     bool training=false) :
+
+                     num_features(num_features),
+                     eps(eps),
+                     momentum(momentum),
+                     affine(affine),
+                     training(training)
+                     
+        {
+
+          // Initialize weights here
+
+          // Ones initialization is temporarry -- just to avoid
+          // division by zero during testing
+          gamma_weight = TENSOR_DEFAULT_TYPE.ones(num_features);
+          beta_bias_weight = TENSOR_DEFAULT_TYPE.zeros(num_features);
+          running_mean = TENSOR_DEFAULT_TYPE.zeros(num_features);
+          running_var = TENSOR_DEFAULT_TYPE.ones(num_features);
+
+          // We don't recompute the mean and var during inference
+          // So, some variables are initialized for possible future use case.
+          save_mean = TENSOR_DEFAULT_TYPE.ones(num_features);
+          save_std = TENSOR_DEFAULT_TYPE.ones(num_features);
+
+        };
+
+        ~BatchNorm2d() {};
+
+        const std::string tostring() const
+        {
+
+          std::stringstream string_stream;
+
+          string_stream << "nn.BatchNorm2d( "
+                        << "num_features=" << std::to_string(num_features) << " "
+                        << "eps=" << std::to_string(eps) << " "
+                        << "momentum=" << std::to_string(momentum) << " )";
+
+          return string_stream.str();
+
+        };
+
+
+        Tensor forward(Tensor input) 
+        {
+
+          Tensor output = TENSOR_DEFAULT_TYPE.tensor();
+
+          BatchNormalization_updateOutput(input,
+                                          output,
+                                          gamma_weight,
+                                          beta_bias_weight,
+                                          running_mean,
+                                          running_var,
+                                          save_mean,
+                                          save_std,
+                                          training,
+                                          momentum,
+                                          eps);
+          return output; 
+        };
+        
+
+
+    };
 
 
 }
 
 int main()
 {
-  
+
    auto net = std::make_shared<torch::Sequential>();
    net->add( std::make_shared<torch::ReLU>() );
    net->add( std::make_shared<torch::Conv2d>(3, 10, 3, 3) );
    net->add( std::make_shared<torch::ReLU>() );
+   net->add( std::make_shared<torch::BatchNorm2d>(10) );
 
    //Visualize the architecture
    std::cout << net->tostring() << std::endl;
