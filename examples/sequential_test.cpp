@@ -122,13 +122,13 @@ namespace torch
 
       public:
 
-         Tensor convolution_weight;
-         Tensor bias_weight;
+          Tensor convolution_weight;
+          Tensor bias_weight;
 
-         Tensor finput;
-         Tensor fgradInput;
-         Tensor ones;
-         Tensor columns;
+          Tensor finput;
+          Tensor fgradInput;
+          Tensor ones;
+          Tensor columns;
 
           int in_channels;
           int out_channels;
@@ -174,7 +174,13 @@ namespace torch
             // Initialize weights here
 
             convolution_weight = TENSOR_DEFAULT_TYPE.zeros({out_channels, in_channels, kernel_width, kernel_height});
-            bias_weight = TENSOR_DEFAULT_TYPE.zeros({out_channels});
+            bias_weight = TENSOR_DEFAULT_TYPE.tensor()
+
+            // Check if we need bias for our convolution
+            if(bias)
+            {
+              bias_weight = TENSOR_DEFAULT_TYPE.zeros({out_channels});
+            }
 
             // These variables are not needed for forward inferece,
             // but we need them in order to call an underlying C
@@ -247,17 +253,17 @@ namespace torch
             {
 
               SpatialConvolutionMM_updateOutput(input,
-                                              output,
-                                              convolution_weight,
-                                              bias_weight,
-                                              finput,
-                                              fgradInput,
-                                              kernel_width,
-                                              kernel_height,
-                                              stride_width,
-                                              stride_height,
-                                              padding_width,
-                                              padding_height);
+                                                output,
+                                                convolution_weight,
+                                                bias_weight,
+                                                finput,
+                                                fgradInput,
+                                                kernel_width,
+                                                kernel_height,
+                                                stride_width,
+                                                stride_height,
+                                                padding_width,
+                                                padding_height);
             }
 
             
