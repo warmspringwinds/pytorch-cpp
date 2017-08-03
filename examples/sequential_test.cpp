@@ -124,8 +124,11 @@ namespace torch
 
          Tensor convolution_weight;
          Tensor bias_weight;
+
          Tensor finput;
          Tensor fgradInput;
+         Tensor ones;
+         Tensor columns;
 
           int in_channels;
           int out_channels;
@@ -142,17 +145,17 @@ namespace torch
           bool dilated;
 
           Conv2d( int in_channels,
-                int out_channels,
-                int kernel_width,
-                int kernel_height,
-                int stride_width=1,
-                int stride_height=1,
-                int padding_width=0,
-                int padding_height=0,
-                int dilation_width=1,
-                int dilation_height=1,
-                int groups=1,
-                int bias=true) :
+                  int out_channels,
+                  int kernel_width,
+                  int kernel_height,
+                  int stride_width=1,
+                  int stride_height=1,
+                  int padding_width=0,
+                  int padding_height=0,
+                  int dilation_width=1,
+                  int dilation_height=1,
+                  int groups=1,
+                  int bias=true) :
 
                 in_channels(in_channels),
                 out_channels(out_channels),
@@ -178,6 +181,9 @@ namespace torch
             // function. Later they will be used for backward pass
             finput = TENSOR_DEFAULT_TYPE.tensor();
             fgradInput = TENSOR_DEFAULT_TYPE.tensor();
+
+            ones = TENSOR_DEFAULT_TYPE.tensor();
+            columns = TENSOR_DEFAULT_TYPE.tensor();
 
 
             // There are separate functions for dilated and non-dilated convolutions
@@ -219,20 +225,20 @@ namespace torch
             if (dilated)
             {
 
-              // SpatialDilatedConvolution_updateOutput(const Tensor & input,
-              //  const Tensor & output,
-              //   const Tensor & weight,
-              //    const Tensor & bias,
-              //     const Tensor & columns,
-              //      const Tensor & ones,
-              //       int kW,
-              //        int kH,
-              //         int dW,
-              //          int dH,
-              //           int padW,
-              //            int padH,
-              //             int dilationW,
-              //              int dilationH);
+              SpatialDilatedConvolution_updateOutput(input,
+                                                     output,
+                                                     convolution_weight,
+                                                     bias_weight,
+                                                     columns,
+                                                     ones,
+                                                     kernel_width,
+                                                     kernel_height,
+                                                     stride_width,
+                                                     stride_height,
+                                                     padding_width,
+                                                     padding_height,
+                                                     dilation_width,
+                                                     dilation_height);
             }
             else
             {
@@ -350,9 +356,23 @@ namespace torch
 int main()
 {
 
+
+  // int in_channels,
+  //                 int out_channels,
+  //                 int kernel_width,
+  //                 int kernel_height,
+  //                 int stride_width=1,
+  //                 int stride_height=1,
+  //                 int padding_width=0,
+  //                 int padding_height=0,
+  //                 int dilation_width=1,
+  //                 int dilation_height=1,
+  //                 int groups=1,
+  //                 int bias=true) :
+
    auto net = std::make_shared<torch::Sequential>();
    net->add( std::make_shared<torch::ReLU>() );
-   net->add( std::make_shared<torch::Conv2d>(3, 10, 3, 3) );
+   net->add( std::make_shared<torch::Conv2d>(3, 10, 3, 3, 1, 1, 1, 1, 2, 2) );
    net->add( std::make_shared<torch::ReLU>() );
    net->add( std::make_shared<torch::BatchNorm2d>(10) );
 
@@ -365,6 +385,7 @@ int main()
 
    // Print out the results -- should be zeros, because we applied RELU
    std::cout << output << std::endl;
+
 
    // Overall output:
 
