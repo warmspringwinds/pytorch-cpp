@@ -174,7 +174,7 @@ namespace torch
             // Initialize weights here
 
             convolution_weight = TENSOR_DEFAULT_TYPE.zeros({out_channels, in_channels, kernel_width, kernel_height});
-            bias_weight = TENSOR_DEFAULT_TYPE.tensor()
+            bias_weight = TENSOR_DEFAULT_TYPE.tensor();
 
             // Check if we need bias for our convolution
             if(bias)
