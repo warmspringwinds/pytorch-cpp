@@ -174,7 +174,9 @@ namespace torch
             // Initialize weights here
 
             convolution_weight = TENSOR_DEFAULT_TYPE.zeros({out_channels, in_channels, kernel_width, kernel_height});
-            bias_weight = TENSOR_DEFAULT_TYPE.tensor();
+
+            // don't know why this works yet :(, doesn't work with TENSOR_DEFAULT_TYPE.tensor();
+            bias_weight = Tensor();
 
             // Check if we need bias for our convolution
             if(bias)
@@ -366,9 +368,22 @@ int main()
 {
 
 
+  // int in_channels,
+  //                 int out_channels,
+  //                 int kernel_width,
+  //                 int kernel_height,
+  //                 int stride_width=1,
+  //                 int stride_height=1,
+  //                 int padding_width=0,
+  //                 int padding_height=0,
+  //                 int dilation_width=1,
+  //                 int dilation_height=1,
+  //                 int groups=1,
+  //                 int bias=true) :
+
    auto net = std::make_shared<torch::Sequential>();
    net->add( std::make_shared<torch::ReLU>() );
-   net->add( std::make_shared<torch::Conv2d>(3, 10, 3, 3, 1, 1, 1, 1, 2, 2) );
+   net->add( std::make_shared<torch::Conv2d>(3, 10, 3, 3, 1, 1, 1, 1, 2, 2, 1, false) );
    net->add( std::make_shared<torch::ReLU>() );
    net->add( std::make_shared<torch::BatchNorm2d>(10) );
 
