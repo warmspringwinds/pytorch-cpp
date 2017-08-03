@@ -182,6 +182,9 @@ namespace torch
             finput = TENSOR_DEFAULT_TYPE.tensor();
             fgradInput = TENSOR_DEFAULT_TYPE.tensor();
 
+            // These variables depend on # of groups, so far only
+            // one group is supported. Needs to be changed to tensor_list
+            // in order to support multiple groups.
             ones = TENSOR_DEFAULT_TYPE.tensor();
             columns = TENSOR_DEFAULT_TYPE.tensor();
 
