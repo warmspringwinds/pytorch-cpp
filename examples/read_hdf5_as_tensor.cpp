@@ -17,6 +17,8 @@ int main()
   hsize_t dims[2];
   float *signal;
 
+  // This file was saved by converting pytorch's tensor to numpy
+  // and writing the numpy array into the hdf5 file
   H5::H5File file = H5::H5File("float_ten_by_ten.h5", H5F_ACC_RDONLY);
 
   H5::DataSet signal_dset = file.openDataSet("dataset_1");
