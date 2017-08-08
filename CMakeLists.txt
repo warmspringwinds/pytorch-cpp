@@ -12,6 +12,7 @@ else()
 endif()
 
 find_package(CUDA 5.5)
+#find_package(HDF5 COMPONENTS C HL NO_MODULE REQUIRED static)
 
 include_directories(
   # dense
@@ -38,11 +39,29 @@ ${ATen_BINARY_DIR}/src/ATen)
 
 INCLUDE_DIRECTORIES(${CUDA_INCLUDE_DIRS})
 
+include_directories(
+${CMAKE_CURRENT_SOURCE_DIR}/CMake-hdf5-1.8.19/hdf5-1.8.19/src
+${CMAKE_CURRENT_SOURCE_DIR}/CMake-hdf5-1.8.19/hdf5-1.8.19/c++/src
+${CMAKE_CURRENT_SOURCE_DIR}/CMake-hdf5-1.8.19/build
+)
+
+set(_hdf5_libs
+${CMAKE_CURRENT_SOURCE_DIR}/CMake-hdf5-1.8.19/build/bin/libhdf5_cpp.a
+${CMAKE_CURRENT_SOURCE_DIR}/CMake-hdf5-1.8.19/build/bin/libhdf5.a
+${CMAKE_CURRENT_SOURCE_DIR}/CMake-hdf5-1.8.19/build/bin/libz.a
+${CMAKE_CURRENT_SOURCE_DIR}/CMake-hdf5-1.8.19/build/bin/libszip.a
+-ldl
+)
+
+
 ADD_EXECUTABLE(read_allocated_gpu_memory examples/read_allocated_gpu_memory.cpp)
 TARGET_LINK_LIBRARIES(read_allocated_gpu_memory ${ATen_BINARY_DIR}/src/ATen/libATen.so.1 ${CUDA_LIBRARIES})
 
 ADD_EXECUTABLE(sequential_test examples/sequential_test.cpp)
 TARGET_LINK_LIBRARIES(sequential_test ${ATen_BINARY_DIR}/src/ATen/libATen.so.1 ${CUDA_LIBRARIES})
+
+ADD_EXECUTABLE(read_hdf5_as_tensor examples/read_hdf5_as_tensor.cpp)
+TARGET_LINK_LIBRARIES(read_hdf5_as_tensor ${ATen_BINARY_DIR}/src/ATen/libATen.so.1 ${CUDA_LIBRARIES} ${_hdf5_libs})
 
 
 #add_subdirectory(examples)

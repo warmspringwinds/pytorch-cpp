@@ -13,7 +13,6 @@ using namespace at; // assumed in the following
 
 namespace torch 
 {
-
    /*
     * Abstract class as nn.Module
     */
@@ -384,7 +383,10 @@ int main()
    // Print out the results -- should be zeros, because we applied RELU
    std::cout << output << std::endl;
 
-   
+
+  //const H5std_string FILENAME = "data.h5";
+  // open file
+
 
    // Overall output:
 
