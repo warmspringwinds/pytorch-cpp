@@ -82,16 +82,15 @@ namespace torch
           buffers.push_back(pair<string, Tensor>(buffer_name, buffer));
         }
 
-        map<string, Tensor> state_dict( map<string, Tensor> destination=map<string, Tensor>(),
+        map<string, Tensor> state_dict( map<string, Tensor> & destination,
                                         string prefix="")
         {
+
 
           for(auto name_parameter_pair: parameters)
           {
 
             destination[prefix + name_parameter_pair.first] = name_parameter_pair.second;
-
-            std::cout << name_parameter_pair.first << std::endl;
           }
 
           for(auto name_buffer_pair: buffers)
@@ -107,6 +106,7 @@ namespace torch
           }
 
           return destination;
+
         }
 
    };
@@ -169,6 +169,16 @@ namespace torch
         Module::Ptr get(int i) const { return modules[i].second;  }
 
 
+        // Sometimes, when modules are being added, not all of them
+        // have weights, like RELU. In this case the weights can be
+        // numerated out of order. For example:
+        // net = nn.Sequential(nn.Linear(2, 2), nn.ReLU(), nn.Linear(2, 2))
+        // net.state_dict().keys()
+        // output: ['0.weight', '0.bias', '2.weight', '2.bias']
+
+        // Equivalent behaviour will be seen with the add() function
+        // described below: if relu is added, the counter for weights will
+        // be increased.
         void add(Module::Ptr module)
         { 
           string module_name = std::to_string(submodule_counter);
@@ -479,9 +489,11 @@ int main()
    Tensor output = net->forward(dummy_input);
 
    // Print out the results -- should be zeros, because we applied RELU
-   std::cout << output << std::endl;
+   //std::cout << output << std::endl;
 
-   map<string, Tensor> test = net->state_dict();
+   map<string, Tensor> test;
+
+   net->state_dict(test);
 
    std::cout << test.size() << std::endl;
 
