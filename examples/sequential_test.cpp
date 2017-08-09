@@ -6,13 +6,24 @@ using std tools, and get a forward pass from that model.
 #include "ATen/ATen.h"
 #include "ATen/Type.h"
 #include <sstream>
+#include <map>
 
 #define TENSOR_DEFAULT_TYPE CPU(kFloat)
 
-using namespace at; // assumed in the following
+using namespace at;
+
+
+using std::map;
+using std::string;
+using std::vector;
+using std::pair;
+using std::shared_ptr;
+
 
 namespace torch 
-{
+{   
+
+
    /*
     * Abstract class as nn.Module
     */
@@ -22,15 +33,81 @@ namespace torch
 
       public:
 
-        typedef std::shared_ptr<Module> Ptr;
-
         Module() {};
 
         ~Module() {};
 
+        // We will use pointer to other modules a lot
+        typedef shared_ptr<Module> Ptr;
+
         virtual Tensor forward(Tensor input) = 0;
 
-        virtual const std::string tostring() const { return std::string("name not defined"); }
+        virtual const string tostring() const { return string("name is not defined"); }
+
+
+        // Like in Pytorch each module stores the modules that it uses
+        vector<pair<string, Ptr>> modules;
+
+        // And parameters that are explicitly used by the current module
+        vector<pair<string, Tensor>> parameters;
+
+        // Plus buffers which are meant to store running mean and var for batchnorm layers
+        vector<pair<string, Tensor>> buffers;
+
+        
+        // A function to add another modules inside current module
+        // Acts as Pytorch's Module.add_module() function
+        void add_module(string module_name, Module::Ptr module)
+        {
+
+
+          modules.push_back(pair<string, Module::Ptr>(module_name, module));
+        }
+
+        // A function to add another modules inside current module
+        // Acts as Pytorch's Module.register_parameter() function
+        void register_parameter(string parameter_name, Tensor parameter)
+        {
+
+
+          parameters.push_back(pair<string, Tensor>(parameter_name, parameter));
+        }
+
+        // A function to add another modules inside current module
+        // Acts as Pytorch's Module.register_buffer() function
+        void register_buffer(string buffer_name, Tensor buffer)
+        {
+
+
+          buffers.push_back(pair<string, Tensor>(buffer_name, buffer));
+        }
+
+        map<string, Tensor> state_dict( map<string, Tensor> destination=map<string, Tensor>(),
+                                        string prefix="")
+        {
+
+          for(auto name_parameter_pair: parameters)
+          {
+
+            destination[prefix + name_parameter_pair.first] = name_parameter_pair.second;
+
+            std::cout << name_parameter_pair.first << std::endl;
+          }
+
+          for(auto name_buffer_pair: buffers)
+          {
+
+            destination[prefix + name_buffer_pair.first] = name_buffer_pair.second;
+          }
+
+          for(auto name_module_pair: modules)
+          {
+
+            name_module_pair.second->state_dict(destination, prefix + name_module_pair.first + '.');
+          }
+
+          return destination;
+        }
 
    };
 
@@ -43,55 +120,64 @@ namespace torch
    {
       public:
 
-         typedef std::shared_ptr<Sequential> Ptr;
+        // Sequential module need the counter
+        // as names of submodules are not provided
+        // sometimes.
+        int submodule_counter;
 
-         Sequential() {};
+        Sequential() : submodule_counter(0) {};
 
-         ~Sequential() {};
+        ~Sequential() {};
 
-         Tensor forward(Tensor input)
-         {
-            Tensor out = input;
+        // Forward for sequential block makes forward pass
+        // for each submodule and passed it to the next one
+        Tensor forward(Tensor input)
+        {
+          Tensor out = input;
 
-            for(auto& it: modules)
-            {
-               out = it->forward(out);
-            }
+          for(auto name_module_pair: modules)
+          {
+             out = name_module_pair.second->forward(out);
+          }
 
-            return out;
-         }
+          return out;
+        }
 
-         
-         const std::string tostring() const
-         {
+        // TODO: so far we assume that elements to the Sequential are added only
+        // using the add method which uses the counter as a name for newly added module.
+        // There might be the cases when we add the submodules with names
+        // The tostring() probably should be changed a little bit for this case
+        const std::string tostring() const
+        {
 
-            std::stringstream s;
+          std::stringstream s;
 
-            s << "nn.Sequential {\n";
+          s << "nn.Sequential {\n";
 
-            int counter = 1;
 
-            for(auto &it: modules)
-            {
+          for(auto name_module_pair: modules)
+          {
 
-               s << "  (" << counter++ << ") " <<  it->tostring() << std::endl;
-            }
+             s << "  (" << name_module_pair.first << ") " <<  name_module_pair.second->tostring() << std::endl;
+          }
 
-            s << "}\n";
-            
-            return s.str();
-         }
+          s << "}\n";
+          
+          return s.str();
+        }
 
-         Module::Ptr get(int i) const { return modules[i];  }
-           
-         void add(Module::Ptr module)
-         {
+        Module::Ptr get(int i) const { return modules[i].second;  }
 
-            modules.push_back(module);
-         }
-         
 
-         std::vector<Module::Ptr> modules;
+        void add(Module::Ptr module)
+        { 
+          string module_name = std::to_string(submodule_counter);
+
+          add_module(module_name, module);
+
+          submodule_counter++;
+        }
+
    };
 
 
@@ -174,13 +260,22 @@ namespace torch
 
             convolution_weight = TENSOR_DEFAULT_TYPE.zeros({out_channels, in_channels, kernel_width, kernel_height});
 
-            // don't know why this works yet :(, doesn't work with TENSOR_DEFAULT_TYPE.tensor();
+            // Register "wight" as a parameter in order to be able to
+            // restore it from a file later on
+            register_parameter("weight", convolution_weight);
+
+            // don't know why this works yet, doesn't work with TENSOR_DEFAULT_TYPE.tensor();
             bias_weight = Tensor();
 
             // Check if we need bias for our convolution
             if(bias)
             {
+
               bias_weight = TENSOR_DEFAULT_TYPE.zeros({out_channels});
+
+              // Register "bias" as a parameter in order to be able to
+              // restore it from a file later on
+              register_parameter("bias", bias_weight);
             }
 
             // These variables are not needed for forward inferece,
@@ -313,6 +408,11 @@ namespace torch
           running_mean = TENSOR_DEFAULT_TYPE.zeros(num_features);
           running_var = TENSOR_DEFAULT_TYPE.ones(num_features);
 
+          register_parameter("weight", gamma_weight);
+          register_parameter("bias", beta_bias_weight);
+          register_buffer("running_mean", running_mean);
+          register_buffer("running_var", running_var);
+
           // We don't recompute the mean and var during inference
           // So, some variables are initialized for possible future use case.
           save_mean = TENSOR_DEFAULT_TYPE.ones(num_features);
@@ -356,8 +456,6 @@ namespace torch
           return output; 
         };
         
-
-
     };
 
 
@@ -383,6 +481,18 @@ int main()
    // Print out the results -- should be zeros, because we applied RELU
    std::cout << output << std::endl;
 
+   map<string, Tensor> test = net->state_dict();
+
+   std::cout << test.size() << std::endl;
+
+
+  for (auto x : test)
+  {
+    std::cout << x.first  // string (key)
+              << ':' 
+              << x.second // string's value 
+              << std::endl ;
+  }
 
   //const H5std_string FILENAME = "data.h5";
   // open file
