@@ -18,6 +18,7 @@ using std::string;
 using std::vector;
 using std::pair;
 using std::shared_ptr;
+using std::make_shared;
 
 
 namespace torch 
@@ -38,11 +39,19 @@ namespace torch
         ~Module() {};
 
         // We will use pointer to other modules a lot
+        // This is done to automatically handle deallocation of created
+        // module objects
         typedef shared_ptr<Module> Ptr;
 
         virtual Tensor forward(Tensor input) = 0;
 
         virtual const string tostring() const { return string("name is not defined"); }
+
+        Tensor operator()(Tensor input)
+        {
+
+         return forward(input);
+        } 
 
 
         // Like in Pytorch each module stores the modules that it uses
@@ -128,6 +137,8 @@ namespace torch
         Sequential() : submodule_counter(0) {};
 
         ~Sequential() {};
+
+        //void operator
 
         // Forward for sequential block makes forward pass
         // for each submodule and passed it to the next one
@@ -469,17 +480,125 @@ namespace torch
     };
 
 
+    /*
+
+
+    class BasicBlock(nn.Module):
+    expansion = 1
+
+    def __init__(self, inplanes, planes, stride=1, downsample=None):
+        super(BasicBlock, self).__init__()
+        self.conv1 = conv3x3(inplanes, planes, stride)
+        self.bn1 = nn.BatchNorm2d(planes)
+        self.relu = nn.ReLU(inplace=True)
+        self.conv2 = conv3x3(planes, planes)
+        self.bn2 = nn.BatchNorm2d(planes)
+        self.downsample = downsample
+        self.stride = stride
+
+    def forward(self, x):
+        residual = x
+
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu(out)
+
+        out = self.conv2(out)
+        out = self.bn2(out)
+
+        if self.downsample is not None:
+            residual = self.downsample(x)
+
+        out += residual
+        out = self.relu(out)
+
+        return out
+
+
+    */
+
+    // TODO: move this thing out in a separate logical unit: models/resnet
+
+    // A helper function for a 3 by 3 convolution without bias
+    // Which is used in every resnet architecture.
+    Module::Ptr conv3x3(int in_planes, int out_planes, int stride=1)
+    {
+
+
+      return std::make_shared<Conv2d>(in_planes, out_planes, 3, 3, stride, stride, 1, 1, 2, 2, 1, false);
+    };
+
+    class BasicBlock : public Module
+    {
+
+      public:
+
+        int stride;
+        Module::Ptr conv1;
+        Module::Ptr bn1;
+        Module::Ptr relu;
+        Module::Ptr conv2;
+        Module::Ptr bn2;
+        Module::Ptr downsample;
+
+        BasicBlock(int inplanes, int planes, int stride, Module::Ptr downsample)
+        {
+
+          conv1 = conv3x3(inplanes, planes, stride);
+          bn1 = std::make_shared<BatchNorm2d>(planes);
+          relu = std::make_shared<ReLU>();
+          conv2 = conv3x3(planes, planes);
+          bn2 = std::make_shared<BatchNorm2d>(planes);
+          downsample = downsample;
+          stride = stride;
+
+          add_module("conv1", conv1);
+          add_module("bn1", bn1);
+          add_module("conv2", conv2);
+          add_module("bn2", bn2);
+          add_module("downsample", downsample);
+        };
+
+        ~BasicBlock() {};
+
+        Tensor forward(Tensor input)
+        {
+
+          // This is done in case we don't have the
+          // downsample module
+          Tensor residual = input;
+          Tensor out;
+
+          out = conv1->forward(input);
+          out = bn1->forward(out);
+          out = relu->forward(out);
+          out = conv2->forward(out);
+          out = bn2->forward(out);
+
+          // TODO: Add check of the downsample -- make sure it was defined
+
+          residual = downsample->forward(input);
+
+          out += residual;
+          out = relu->forward(out);
+
+          return out;
+        }
+
+    };
+
+
 }
 
 int main()
 {
-
-
+   
    auto net = std::make_shared<torch::Sequential>();
    net->add( std::make_shared<torch::ReLU>() );
    net->add( std::make_shared<torch::Conv2d>(3, 10, 3, 3, 1, 1, 1, 1, 2, 2, 1, false) );
    net->add( std::make_shared<torch::ReLU>() );
    net->add( std::make_shared<torch::BatchNorm2d>(10) );
+   //auto netnet = *net;
 
    //Visualize the architecture
    std::cout << net->tostring() << std::endl;
@@ -505,6 +624,7 @@ int main()
               << x.second // string's value 
               << std::endl ;
   }
+
 
   //const H5std_string FILENAME = "data.h5";
   // open file
