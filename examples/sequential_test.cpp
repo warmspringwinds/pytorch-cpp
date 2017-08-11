@@ -45,7 +45,7 @@ namespace torch
 
         virtual Tensor forward(Tensor input) = 0;
 
-        virtual const string tostring() const { return string("name is not defined"); }
+        virtual string tostring() { return string("name is not defined"); }
 
         Tensor operator()(Tensor input)
         {
@@ -158,7 +158,7 @@ namespace torch
         // using the add method which uses the counter as a name for newly added module.
         // There might be the cases when we add the submodules with names
         // The tostring() probably should be changed a little bit for this case
-        const std::string tostring() const
+        std::string tostring()
         {
 
           std::stringstream s;
@@ -219,8 +219,11 @@ namespace torch
               return input; 
          };
 
-         const std::string tostring() const { return std::string("nn.ReLU"); }
+         std::string tostring(){ return std::string("nn.ReLU"); }
    };
+
+
+   
 
 
    class Conv2d : public Module
@@ -324,7 +327,7 @@ namespace torch
 
           ~Conv2d() {};
 
-          const std::string tostring() const
+          std::string tostring()
           {
 
             std::stringstream string_stream;
@@ -443,7 +446,7 @@ namespace torch
 
         ~BatchNorm2d() {};
 
-        const std::string tostring() const
+        std::string tostring()
         {
 
           std::stringstream string_stream;
@@ -480,43 +483,6 @@ namespace torch
     };
 
 
-    /*
-
-
-    class BasicBlock(nn.Module):
-    expansion = 1
-
-    def __init__(self, inplanes, planes, stride=1, downsample=None):
-        super(BasicBlock, self).__init__()
-        self.conv1 = conv3x3(inplanes, planes, stride)
-        self.bn1 = nn.BatchNorm2d(planes)
-        self.relu = nn.ReLU(inplace=True)
-        self.conv2 = conv3x3(planes, planes)
-        self.bn2 = nn.BatchNorm2d(planes)
-        self.downsample = downsample
-        self.stride = stride
-
-    def forward(self, x):
-        residual = x
-
-        out = self.conv1(x)
-        out = self.bn1(out)
-        out = self.relu(out)
-
-        out = self.conv2(out)
-        out = self.bn2(out)
-
-        if self.downsample is not None:
-            residual = self.downsample(x)
-
-        out += residual
-        out = self.relu(out)
-
-        return out
-
-
-    */
-
     // TODO: move this thing out in a separate logical unit: models/resnet
 
     // A helper function for a 3 by 3 convolution without bias
@@ -525,8 +491,25 @@ namespace torch
     {
 
 
-      return std::make_shared<Conv2d>(in_planes, out_planes, 3, 3, stride, stride, 1, 1, 2, 2, 1, false);
+      return std::make_shared<Conv2d>(in_planes, out_planes, 3, 3, stride, stride, 1, 1, 1, 1, 1, false);
     };
+
+    Module::Ptr resnet_base_conv7x7()
+    {
+
+      return make_shared<Conv2d>(3,      /* in_planes */
+                                 64,     /* out_planes */
+                                 7,      /* kernel_w */
+                                 7,      /* kernel_h */
+                                 2,      /* stride_w */
+                                 2,      /* stride_h */
+                                 3,      /* padding_w */
+                                 3,      /* padding_h */
+                                 1,      /* dilation_w */
+                                 1,      /* dilation_h */
+                                 1,      /* groups */
+                                 false); /* bias */
+    }
 
     class BasicBlock : public Module
     {
@@ -588,27 +571,142 @@ namespace torch
     };
 
 
+
+    
+    template <class BlockType>
+    class ResNet : public Module
+    {
+
+      public:
+
+        int stride;
+        Module::Ptr conv1;
+        Module::Ptr bn1;
+        Module::Ptr relu;
+        Module::Ptr maxpool;
+        Module::Ptr layer1;
+        Module::Ptr layer2;
+        Module::Ptr layer3;
+        Module::Ptr layer4;
+        Module::Ptr avgpool;
+        Module::Ptr fc;
+
+        // block, layers, num_classes=1000):
+        ResNet(vector<int> layers, int num_classes=1000)
+        {
+
+          conv1 = resnet_base_conv7x7();
+          bn1 = std::make_shared<BatchNorm2d>(64);
+          relu = std::make_shared<ReLU>();
+
+        }
+ 
+
+    };
+
+
+    class MaxPool2d : public Module
+    {
+      public:
+
+        Tensor indices;
+        bool ceil_mode;
+        int kernel_width;
+        int kernel_height;
+        int stride_width;
+        int stride_height;
+        int padding_width;
+        int padding_height;
+
+       
+        MaxPool2d(int kernel_width,
+                  int kernel_height,
+                  int stride_width=1,
+                  int stride_height=1,
+                  int padding_width=0,
+                  int padding_height=0,
+                  bool ceil_mode=false) :
+
+                  kernel_width(kernel_width),
+                  kernel_height(kernel_height),
+                  stride_width(stride_width),
+                  stride_height(stride_height),
+                  padding_width(padding_width),
+                  padding_height(padding_height),
+                  ceil_mode(ceil_mode)
+        {
+
+          // TODO: so far this one is hardcoded.
+          // Change to make it gpu or cpu depending
+          // on the network placement
+          indices =  CPU(kLong).tensor();
+        };
+
+
+        ~MaxPool2d() {};
+
+        Tensor forward(Tensor input)
+        {
+
+          Tensor output = TENSOR_DEFAULT_TYPE.tensor();
+
+          SpatialMaxPooling_updateOutput(input,
+                                         output,
+                                         indices,
+                                         kernel_width,
+                                         kernel_width,
+                                         stride_width,
+                                         stride_height,
+                                         padding_width,
+                                         padding_height,
+                                         ceil_mode);
+
+          return output; 
+        };
+
+        string tostring()
+        {
+
+          std::stringstream string_stream;
+
+          string_stream << "nn.MaxPool2d() "
+                        << "kernel_size=(" << std::to_string(kernel_width) << ", " << std::to_string(kernel_height) << ") "
+                        << "stride=(" << std::to_string(stride_width) << ", " << std::to_string(stride_height) << ") "
+                        << "padding=(" << std::to_string(padding_width) << ", " << std::to_string(padding_height) << ") ";
+
+          return string_stream.str();
+
+        };
+   };
+
+
+   
+
 }
 
 int main()
 {
    
    auto net = std::make_shared<torch::Sequential>();
-   net->add( std::make_shared<torch::ReLU>() );
-   net->add( std::make_shared<torch::Conv2d>(3, 10, 3, 3, 1, 1, 1, 1, 2, 2, 1, false) );
-   net->add( std::make_shared<torch::ReLU>() );
-   net->add( std::make_shared<torch::BatchNorm2d>(10) );
-   //auto netnet = *net;
+   net->add( std::make_shared<torch::MaxPool2d>(3, 3) );
+
+   // net->add( std::make_shared<torch::ReLU>() );
+   // net->add( std::make_shared<torch::Conv2d>(3, 10, 3, 3, 1, 1, 1, 1, 2, 2, 1, false) );
+   // net->add( std::make_shared<torch::ReLU>() );
+   // net->add( std::make_shared<torch::BatchNorm2d>(10) );
+   // //auto netnet = *net;
 
    //Visualize the architecture
    std::cout << net->tostring() << std::endl;
 
    Tensor dummy_input = TENSOR_DEFAULT_TYPE.ones({1, 3, 5, 5}) * (-10);
+   dummy_input[0][0][1][2] = 4;
 
    Tensor output = net->forward(dummy_input);
 
+
    // Print out the results -- should be zeros, because we applied RELU
-   //std::cout << output << std::endl;
+   std::cout << output << std::endl;
 
    map<string, Tensor> test;
 
