@@ -669,10 +669,10 @@ namespace torch
 
           std::stringstream string_stream;
 
-          string_stream << "nn.MaxPool2d() "
+          string_stream << "nn.MaxPool2d( "
                         << "kernel_size=(" << std::to_string(kernel_width) << ", " << std::to_string(kernel_height) << ") "
                         << "stride=(" << std::to_string(stride_width) << ", " << std::to_string(stride_height) << ") "
-                        << "padding=(" << std::to_string(padding_width) << ", " << std::to_string(padding_height) << ") ";
+                        << "padding=(" << std::to_string(padding_width) << ", " << std::to_string(padding_height) << ") )";
 
           return string_stream.str();
 
@@ -680,7 +680,76 @@ namespace torch
    };
 
 
-   
+   class AvgPool2d : public Module
+   {
+      public:
+
+        Tensor indices;
+        bool ceil_mode;
+        bool count_include_pad;
+        int kernel_width;
+        int kernel_height;
+        int stride_width;
+        int stride_height;
+        int padding_width;
+        int padding_height;
+
+       
+        AvgPool2d(int kernel_width,
+                  int kernel_height,
+                  int stride_width=1,
+                  int stride_height=1,
+                  int padding_width=0,
+                  int padding_height=0,
+                  bool ceil_mode=false,
+                  bool count_include_pad=true) :
+
+                  kernel_width(kernel_width),
+                  kernel_height(kernel_height),
+                  stride_width(stride_width),
+                  stride_height(stride_height),
+                  padding_width(padding_width),
+                  padding_height(padding_height),
+                  ceil_mode(ceil_mode),
+                  count_include_pad(count_include_pad)
+        { };
+
+
+        ~AvgPool2d() {};
+
+        Tensor forward(Tensor input)
+        {
+
+          Tensor output = TENSOR_DEFAULT_TYPE.tensor();
+
+          SpatialAveragePooling_updateOutput(input,
+                                             output,
+                                             kernel_width,
+                                             kernel_height,
+                                             stride_width,
+                                             stride_height,
+                                             padding_width,
+                                             padding_height,
+                                             ceil_mode,
+                                             count_include_pad);
+
+          return output; 
+        };
+
+        string tostring()
+        {
+
+          std::stringstream string_stream;
+
+          string_stream << "nn.AvgPool2d( "
+                        << "kernel_size=(" << std::to_string(kernel_width) << ", " << std::to_string(kernel_height) << ") "
+                        << "stride=(" << std::to_string(stride_width) << ", " << std::to_string(stride_height) << ") "
+                        << "padding=(" << std::to_string(padding_width) << ", " << std::to_string(padding_height) << ") )"; 
+
+          return string_stream.str();
+
+        };
+   };
 
 }
 
@@ -688,7 +757,7 @@ int main()
 {
    
    auto net = std::make_shared<torch::Sequential>();
-   net->add( std::make_shared<torch::MaxPool2d>(3, 3) );
+   net->add( std::make_shared<torch::AvgPool2d>(3, 3) );
 
    // net->add( std::make_shared<torch::ReLU>() );
    // net->add( std::make_shared<torch::Conv2d>(3, 10, 3, 3, 1, 1, 1, 1, 2, 2, 1, false) );
