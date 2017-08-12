@@ -751,13 +751,95 @@ namespace torch
         };
    };
 
+
+   //Linear(in_features, out_features, bias=True)
+
+
+   class Linear : public Module
+   {
+
+      public:
+
+          Tensor weight;
+          Tensor bias_weight;
+
+          int in_features;
+          int out_features;
+          bool bias;
+
+          Linear( int in_features,
+                  int out_features,
+                  bool bias=true) :
+
+                in_features(in_features),
+                out_features(out_features),
+                bias(bias)
+          {
+
+            // Initialize weights here
+
+            weight = TENSOR_DEFAULT_TYPE.zeros({out_features, in_features});
+            register_parameter("weight", weight);
+
+            // don't know why this works yet, doesn't work with TENSOR_DEFAULT_TYPE.tensor();
+            bias_weight = Tensor();
+
+            // Check if we need bias for our convolution
+            if(bias)
+            {
+
+              bias_weight = TENSOR_DEFAULT_TYPE.ones({out_features});
+
+              // Register "bias" as a parameter in order to be able to
+              // restore it from a file later on
+              register_parameter("bias", bias_weight);
+            }
+
+          };
+
+          ~Linear() {};
+
+          std::string tostring()
+          {
+
+            std::stringstream string_stream;
+
+            string_stream << "nn.Linear( "
+                          << "in_features=" << std::to_string(in_features) << " "
+                          << "out_features=" << std::to_string(out_features) << " "
+                          << "bias=" << std::to_string(bias) << " )";
+
+            return string_stream.str();
+
+          };
+
+          Tensor forward(Tensor input)
+          {
+
+            // https://github.com/pytorch/pytorch/blob/49ec984c406e67107aae2891d24c8839b7dc7c33/torch/nn/_functions/linear.py
+
+            Tensor output = input.type().zeros({input.size(0), weight.size(0)});
+
+            output.addmm_(0, 1, input, weight.t());
+            
+            if(bias)
+            {
+              // TODO: check if in-place resize affects the result
+              output.add_(bias_weight.expand({output.size(0), output.size(1)}));  
+            }
+            
+            return output; 
+          };
+    };
+
+
 }
 
 int main()
 {
    
    auto net = std::make_shared<torch::Sequential>();
-   net->add( std::make_shared<torch::AvgPool2d>(3, 3) );
+   net->add( std::make_shared<torch::Linear>(3, 3, true) );
 
    // net->add( std::make_shared<torch::ReLU>() );
    // net->add( std::make_shared<torch::Conv2d>(3, 10, 3, 3, 1, 1, 1, 1, 2, 2, 1, false) );
@@ -766,10 +848,15 @@ int main()
    // //auto netnet = *net;
 
    //Visualize the architecture
-   std::cout << net->tostring() << std::endl;
+   //std::cout << net->tostring() << std::endl;
 
-   Tensor dummy_input = TENSOR_DEFAULT_TYPE.ones({1, 3, 5, 5}) * (-10);
-   dummy_input[0][0][1][2] = 4;
+   // Tensor dummy_input = TENSOR_DEFAULT_TYPE.ones({1, 3, 5, 5}) * (-10);
+   // dummy_input[0][0][1][2] = 4;
+
+   Tensor dummy_input = TENSOR_DEFAULT_TYPE.ones({3, 3}) * (-10.0);
+   //dummy_input[1][2] = 4;
+
+   std::cout << dummy_input << std::endl;
 
    Tensor output = net->forward(dummy_input);
 
@@ -781,16 +868,16 @@ int main()
 
    net->state_dict(test);
 
-   std::cout << test.size() << std::endl;
+   //std::cout << test.size() << std::endl;
 
 
-  for (auto x : test)
-  {
-    std::cout << x.first  // string (key)
-              << ':' 
-              << x.second // string's value 
-              << std::endl ;
-  }
+  // for (auto x : test)
+  // {
+  //   std::cout << x.first  // string (key)
+  //             << ':' 
+  //             << x.second // string's value 
+  //             << std::endl ;
+  // }
 
 
   //const H5std_string FILENAME = "data.h5";
