@@ -24,10 +24,7 @@ using std::make_shared;
 namespace torch 
 {   
 
-   /*
-    * Abstract class as nn.Module
-    */
-
+   
    class Module
    {
 
@@ -49,8 +46,6 @@ namespace torch
 
         // This function gets overwritten
         // for the leafnodes like Conv2d, AvgPool2d and so on
-
-        // Make the indentation levels!
         virtual string tostring(int indentation_level=0)
         {
 
@@ -64,7 +59,7 @@ namespace torch
           {
 
               s << indentation << " (" << name_module_pair.first << ") "
-                <<  name_module_pair.second->tostring(indentation_level + 1) << std::endl;
+                << name_module_pair.second->tostring(indentation_level + 1) << std::endl;
           }
 
           s << indentation << ")" << std::endl;
@@ -72,18 +67,6 @@ namespace torch
           return s.str();
 
         }
-
-
-
-        // def __repr__(self):
-        // tmpstr = self.__class__.__name__ + ' (\n'
-        // for key, module in self._modules.items():
-        //     modstr = module.__repr__()
-        //     modstr = _addindent(modstr, 2)
-        //     tmpstr = tmpstr + '  (' + key + '): ' + modstr + '\n'
-        // tmpstr = tmpstr + ')'
-        // return tmpstr
-
 
         // Like in Pytorch each module stores the modules that it uses
         vector<pair<string, Ptr>> modules;
@@ -152,10 +135,6 @@ namespace torch
    };
 
 
-   /*
-    * nn.Sequential
-    */
-
    class Sequential : public Module 
    {
       public:
@@ -189,32 +168,8 @@ namespace torch
           return out;
         }
 
-        // TODO: so far we assume that elements to the Sequential are added only
-        // using the add method which uses the counter as a name for newly added module.
-        // There might be the cases when we add the submodules with names
-        // The tostring() probably should be changed a little bit for this case
-
-        // string tostring()
-        // {
-
-        //   std::stringstream s;
-
-        //   s << "nn.Sequential {\n";
-
-
-        //   for(auto name_module_pair: modules)
-        //   {
-
-        //      s << "  (" << name_module_pair.first << ") " <<  name_module_pair.second->tostring() << std::endl;
-        //   }
-
-        //   s << "}\n";
-          
-        //   return s.str();
-        // }
 
         Module::Ptr get(int i) const { return modules[i].second;  }
-
 
         // Sometimes, when modules are being added, not all of them
         // have weights, like RELU. In this case the weights can be
@@ -238,10 +193,6 @@ namespace torch
    };
 
 
-   /*
-    * nn.ReLU
-    */
-
    class ReLU : public Module
    {
       public:
@@ -264,9 +215,6 @@ namespace torch
           return indentation + std::string("ReLU"); 
         }
    };
-
-
-   
 
 
    class Conv2d : public Module
@@ -324,7 +272,6 @@ namespace torch
           {
 
             // Initialize weights here
-
             convolution_weight = TENSOR_DEFAULT_TYPE.zeros({out_channels, in_channels, kernel_width, kernel_height});
 
             // Register "wight" as a parameter in order to be able to
@@ -918,6 +865,23 @@ namespace torch
 
           fc = std::make_shared<Linear>(512 * BlockType::expansion, num_classes);
 
+          add_module("conv1", conv1);
+          add_module("bn1", bn1);
+          add_module("relu", relu);
+
+          add_module("maxpool", maxpool);
+
+          add_module("layer1", layer1);
+          add_module("layer2", layer2);
+          add_module("layer3", layer3);
+          add_module("layer4", layer4);
+
+          add_module("avgpool", avgpool);
+
+          add_module("fc", fc);
+
+          module_name = "ResNet";
+
         }
 
         Tensor forward(Tensor input)
@@ -963,6 +927,7 @@ namespace torch
                                                              1, 1,
                                                              stride, stride,
                                                              0, 0,
+                                                             1, 1,
                                                              1,
                                                              false) );
 
@@ -988,51 +953,91 @@ namespace torch
     };
 
 
+    Module::Ptr resnet18(int num_classes=1000)
+    {
+
+      return std::shared_ptr<torch::ResNet<torch::BasicBlock>>(
+          new torch::ResNet<torch::BasicBlock>({2, 2, 2, 2}, 1000) );
+    }
+
+
+    Module::Ptr resnet34(int num_classes=1000)
+    {
+
+      return std::shared_ptr<torch::ResNet<torch::BasicBlock>>(
+          new torch::ResNet<torch::BasicBlock>({3, 4, 6, 3}, 1000) );
+    }
+
+
 }
 
 
 
 int main()
 {
-   
-   //auto net = std::make_shared<torch::Sequential>();
-   //net->add( std::make_shared<torch::Linear>(3, 3, true) );
-   //net->add( std::make_shared<torch::ReLU>());
-   //net->add( std::make_shared<torch::ReLU>());
+
+  
+  auto net = torch::resnet18();
+  
+  //std::cout << net->tostring() << std::endl;
+
+  map<string, Tensor> dict;
+
+  net->state_dict(dict);
+
+  int first_dim;
+  int second_dim;
+
+  for (auto x : dict)
+  {
+
+    std::cout << x.first << std::endl  // string (key)
+              << ':' 
+              << x.second.sizes() // string's value 
+              << std::endl ;
+  }
 
 
-   //std::cout << net->tostring() << std::endl;
+  
 
-   //net->add( std::make_shared<torch::ReLU>() );
-   // net->add( std::make_shared<torch::Conv2d>(3, 10, 3, 3, 1, 1, 1, 1, 2, 2, 1, false) );
-   // net->add( std::make_shared<torch::ReLU>() );
-   // net->add( std::make_shared<torch::BatchNorm2d>(10) );
-   // //auto netnet = *net;
-
-   //Visualize the architecture
-   //std::cout << net->tostring() << std::endl;
-
-   // Tensor dummy_input = TENSOR_DEFAULT_TYPE.ones({1, 3, 5, 5}) * (-10);
-   // dummy_input[0][0][1][2] = 4;
+  //auto net = std::make_shared<torch::Sequential>();
+  //net->add( std::make_shared<torch::Linear>(3, 3, true) );
+  //net->add( std::make_shared<torch::ReLU>());
+  //net->add( std::make_shared<torch::ReLU>());
 
 
-   //auto net = torch::ResNet<torch::BasicBlock>({2, 2, 2, 2}, 1000);
+  //std::cout << net->tostring() << std::endl;
 
-  auto net2 = std::make_shared<torch::Sequential>();
-  net2->add( std::make_shared<torch::BasicBlock>(10, 11) );
+  //net->add( std::make_shared<torch::ReLU>() );
+  // net->add( std::make_shared<torch::Conv2d>(3, 10, 3, 3, 1, 1, 1, 1, 2, 2, 1, false) );
+  // net->add( std::make_shared<torch::ReLU>() );
+  // net->add( std::make_shared<torch::BatchNorm2d>(10) );
+  // //auto netnet = *net;
 
-  auto net = std::make_shared<torch::Sequential>();
+  //Visualize the architecture
+  //std::cout << net->tostring() << std::endl;
 
-  net->add( std::make_shared<torch::BasicBlock>(10, 11) );
-  net->add( std::make_shared<torch::BasicBlock>(11, 100) );
-  net->add( net2 );
+  // Tensor dummy_input = TENSOR_DEFAULT_TYPE.ones({1, 3, 5, 5}) * (-10);
+  // dummy_input[0][0][1][2] = 4;
 
-  std::cout << net->tostring() << std::endl;
+  // Resolve the pointer issue
+
+  
+  //auto boo = std::make_shared(net);
+
+  // auto net2 = std::make_shared<torch::Sequential>();
+  // net2->add( std::make_shared<torch::BasicBlock>(10, 11) );
+
+  // auto net = std::make_shared<torch::Sequential>();
+
+  // net->add( std::make_shared<torch::BasicBlock>(10, 11) );
+  // net->add( std::make_shared<torch::BasicBlock>(11, 100) );
+
+  // net->add( net2 );
+
+  
 
    // Tensor dummy_input = TENSOR_DEFAULT_TYPE.ones({3, 3}) * (-10.0);
-
-
-
 
 
    
