@@ -24,7 +24,6 @@ using std::make_shared;
 namespace torch 
 {   
 
-
    /*
     * Abstract class as nn.Module
     */
@@ -43,15 +42,47 @@ namespace torch
         // module objects
         typedef shared_ptr<Module> Ptr;
 
-        virtual Tensor forward(Tensor input) = 0;
+        Tensor forward(Tensor input) { return input; };
 
-        virtual string tostring() { return string("name is not defined"); }
+        string module_name = "Module";
 
-        Tensor operator()(Tensor input)
+
+        // This function gets overwritten
+        // for the leafnodes like Conv2d, AvgPool2d and so on
+
+        // Make the indentation levels!
+        virtual string tostring(int indentation_level=0)
         {
 
-         return forward(input);
-        } 
+          std::stringstream s;
+
+          string indentation = string(indentation_level, ' ');
+
+          s << indentation << module_name << " (" << std::endl;
+
+          for(auto name_module_pair: modules)
+          {
+
+              s << indentation << " (" << name_module_pair.first << ") "
+                <<  name_module_pair.second->tostring(indentation_level + 1) << std::endl;
+          }
+
+          s << indentation << ")" << std::endl;
+
+          return s.str();
+
+        }
+
+
+
+        // def __repr__(self):
+        // tmpstr = self.__class__.__name__ + ' (\n'
+        // for key, module in self._modules.items():
+        //     modstr = module.__repr__()
+        //     modstr = _addindent(modstr, 2)
+        //     tmpstr = tmpstr + '  (' + key + '): ' + modstr + '\n'
+        // tmpstr = tmpstr + ')'
+        // return tmpstr
 
 
         // Like in Pytorch each module stores the modules that it uses
@@ -134,7 +165,11 @@ namespace torch
         // sometimes.
         int submodule_counter;
 
-        Sequential() : submodule_counter(0) {};
+        Sequential() : submodule_counter(0) 
+        {
+
+          module_name = "Sequential";
+        };
 
         ~Sequential() {};
 
@@ -158,24 +193,25 @@ namespace torch
         // using the add method which uses the counter as a name for newly added module.
         // There might be the cases when we add the submodules with names
         // The tostring() probably should be changed a little bit for this case
-        std::string tostring()
-        {
 
-          std::stringstream s;
+        // string tostring()
+        // {
 
-          s << "nn.Sequential {\n";
+        //   std::stringstream s;
+
+        //   s << "nn.Sequential {\n";
 
 
-          for(auto name_module_pair: modules)
-          {
+        //   for(auto name_module_pair: modules)
+        //   {
 
-             s << "  (" << name_module_pair.first << ") " <<  name_module_pair.second->tostring() << std::endl;
-          }
+        //      s << "  (" << name_module_pair.first << ") " <<  name_module_pair.second->tostring() << std::endl;
+        //   }
 
-          s << "}\n";
+        //   s << "}\n";
           
-          return s.str();
-        }
+        //   return s.str();
+        // }
 
         Module::Ptr get(int i) const { return modules[i].second;  }
 
@@ -210,16 +246,23 @@ namespace torch
    {
       public:
 
-         ReLU() {};
-         ~ReLU() {};
+        ReLU() {};
+        ~ReLU() {};
 
-         Tensor forward(Tensor input) 
-         { 
-            Threshold_updateOutput(input, input, 0, 0, true) ;
-              return input; 
-         };
+        Tensor forward(Tensor input) 
+        { 
+          Threshold_updateOutput(input, input, 0, 0, true) ;
+            return input; 
+        };
 
-         std::string tostring(){ return std::string("nn.ReLU"); }
+
+        string tostring(int indentation_level=0)
+        { 
+
+          string indentation = string(indentation_level, ' ');
+
+          return indentation + std::string("ReLU"); 
+        }
    };
 
 
@@ -327,12 +370,15 @@ namespace torch
 
           ~Conv2d() {};
 
-          std::string tostring()
+          
+          string tostring(int indentation_level=0)
           {
 
             std::stringstream string_stream;
 
-            string_stream << "nn.Conv2d( "
+            string indentation = string(indentation_level, ' ');
+
+            string_stream << indentation << "Conv2d( "
                           << "in_channels=" << std::to_string(in_channels) << " "
                           << "out_channels=" << std::to_string(out_channels) << " "
                           << "kernel_size=(" << std::to_string(kernel_width) << ", " << std::to_string(kernel_height) << ") "
@@ -446,12 +492,15 @@ namespace torch
 
         ~BatchNorm2d() {};
 
-        std::string tostring()
+        string tostring(int indentation_level=0)
         {
 
           std::stringstream string_stream;
 
-          string_stream << "nn.BatchNorm2d( "
+          string indentation = string(indentation_level, ' ');
+
+          string_stream << indentation
+                        << "BatchNorm2d( "
                         << "num_features=" << std::to_string(num_features) << " "
                         << "eps=" << std::to_string(eps) << " "
                         << "momentum=" << std::to_string(momentum) << " )";
@@ -576,12 +625,15 @@ namespace torch
           return output; 
         };
 
-        string tostring()
+        string tostring(int indentation_level=0)
         {
 
           std::stringstream string_stream;
 
-          string_stream << "nn.MaxPool2d( "
+          string indentation = string(indentation_level, ' ');
+
+          string_stream << indentation
+                        << "MaxPool2d( "
                         << "kernel_size=(" << std::to_string(kernel_width) << ", " << std::to_string(kernel_height) << ") "
                         << "stride=(" << std::to_string(stride_width) << ", " << std::to_string(stride_height) << ") "
                         << "padding=(" << std::to_string(padding_width) << ", " << std::to_string(padding_height) << ") )";
@@ -648,12 +700,15 @@ namespace torch
           return output; 
         };
 
-        string tostring()
+        string tostring(int indentation_level=0)
         {
 
           std::stringstream string_stream;
 
-          string_stream << "nn.AvgPool2d( "
+          string indentation = string(indentation_level, ' ');
+
+          string_stream << indentation
+                        << "AvgPool2d( "
                         << "kernel_size=(" << std::to_string(kernel_width) << ", " << std::to_string(kernel_height) << ") "
                         << "stride=(" << std::to_string(stride_width) << ", " << std::to_string(stride_height) << ") "
                         << "padding=(" << std::to_string(padding_width) << ", " << std::to_string(padding_height) << ") )"; 
@@ -708,12 +763,15 @@ namespace torch
 
           ~Linear() {};
 
-          std::string tostring()
+          string tostring(int indentation_level=0)
           {
 
             std::stringstream string_stream;
 
-            string_stream << "nn.Linear( "
+            string indentation = string(indentation_level, ' ');
+
+            string_stream << indentation
+                          << "nn.Linear( "
                           << "in_features=" << std::to_string(in_features) << " "
                           << "out_features=" << std::to_string(out_features) << " "
                           << "bias=" << std::to_string(bias) << " )";
@@ -774,7 +832,16 @@ namespace torch
           add_module("bn1", bn1);
           add_module("conv2", conv2);
           add_module("bn2", bn2);
-          add_module("downsample", downsample);
+
+          if( downsample != nullptr )
+          {
+
+            
+            add_module("downsample", downsample);
+          }
+
+          module_name = "BasicBlock";
+
         };
 
         ~BasicBlock() {};
@@ -829,7 +896,7 @@ namespace torch
         Module::Ptr fc;
 
         // block, layers, num_classes=1000):
-        ResNet(vector<int> layers, int num_classes=1000) :
+        ResNet(IntList layers, int num_classes=1000) :
 
         // First depth input is the same for all resnet models
         in_planes(64)
@@ -842,25 +909,40 @@ namespace torch
           // Kernel size: 3, Stride: 2, Padding, 1 -- full padding 
           maxpool = std::make_shared<MaxPool2d>(3, 3, 2, 2, 1, 1);
 
+          layer1 = make_layer(64, layers[0], 1);
+          layer2 = make_layer(128, layers[1], 2);
+          layer3 = make_layer(256, layers[2], 2);
+          layer4 = make_layer(512, layers[3], 2);
+
+          avgpool = std::make_shared<AvgPool2d>(7, 7);
+
+          fc = std::make_shared<Linear>(512 * BlockType::expansion, num_classes);
+
         }
 
+        Tensor forward(Tensor input)
+        {
 
-        // def _make_layer(self, block, planes, blocks, stride=1):
-        // downsample = None
-        // if stride != 1 or self.inplanes != planes * block.expansion:
-        //     downsample = nn.Sequential(
-        //         nn.Conv2d(self.inplanes, planes * block.expansion,
-        //                   kernel_size=1, stride=stride, bias=False),
-        //         nn.BatchNorm2d(planes * block.expansion),
-        //     )
+          Tensor output = TENSOR_DEFAULT_TYPE.tensor();
 
-        // layers = []
-        // layers.append(block(self.inplanes, planes, stride, downsample))
-        // self.inplanes = planes * block.expansion
-        // for i in range(1, blocks):
-        //     layers.append(block(self.inplanes, planes))
+          output = conv1->forward(input);
+          output = bn1->forward(input);
+          output = relu->forward(input);
+          output = maxpool->forward(input);
 
-        // return nn.Sequential(*layers)
+          output = layer1->forward(input);
+          output = layer2->forward(input);
+          output = layer3->forward(input);
+          output = layer4->forward(input);
+
+          output = avgpool->forward(input);
+          // Flatten the output in order to apply linear layer
+          output = output.view({output.size(0), -1});
+          output = fc->forward(input);
+
+          return output;
+
+        }
 
         
         Module::Ptr make_layer(int planes, int blocks, int stride)
@@ -913,10 +995,15 @@ namespace torch
 int main()
 {
    
-   auto net = std::make_shared<torch::Sequential>();
-   net->add( std::make_shared<torch::Linear>(3, 3, true) );
+   //auto net = std::make_shared<torch::Sequential>();
+   //net->add( std::make_shared<torch::Linear>(3, 3, true) );
+   //net->add( std::make_shared<torch::ReLU>());
+   //net->add( std::make_shared<torch::ReLU>());
 
-   // net->add( std::make_shared<torch::ReLU>() );
+
+   //std::cout << net->tostring() << std::endl;
+
+   //net->add( std::make_shared<torch::ReLU>() );
    // net->add( std::make_shared<torch::Conv2d>(3, 10, 3, 3, 1, 1, 1, 1, 2, 2, 1, false) );
    // net->add( std::make_shared<torch::ReLU>() );
    // net->add( std::make_shared<torch::BatchNorm2d>(10) );
@@ -928,20 +1015,43 @@ int main()
    // Tensor dummy_input = TENSOR_DEFAULT_TYPE.ones({1, 3, 5, 5}) * (-10);
    // dummy_input[0][0][1][2] = 4;
 
-   Tensor dummy_input = TENSOR_DEFAULT_TYPE.ones({3, 3}) * (-10.0);
-   //dummy_input[1][2] = 4;
 
-   std::cout << dummy_input << std::endl;
+   //auto net = torch::ResNet<torch::BasicBlock>({2, 2, 2, 2}, 1000);
 
-   Tensor output = net->forward(dummy_input);
+  auto net2 = std::make_shared<torch::Sequential>();
+  net2->add( std::make_shared<torch::BasicBlock>(10, 11) );
+
+  auto net = std::make_shared<torch::Sequential>();
+
+  net->add( std::make_shared<torch::BasicBlock>(10, 11) );
+  net->add( std::make_shared<torch::BasicBlock>(11, 100) );
+  net->add( net2 );
+
+  std::cout << net->tostring() << std::endl;
+
+   // Tensor dummy_input = TENSOR_DEFAULT_TYPE.ones({3, 3}) * (-10.0);
 
 
-   // Print out the results -- should be zeros, because we applied RELU
-   std::cout << output << std::endl;
 
-   map<string, Tensor> test;
 
-   net->state_dict(test);
+
+   
+
+   // std::cout << dummy_input << std::endl;
+
+   // Tensor output = net->forward(dummy_input);
+
+
+   // // Print out the results -- should be zeros, because we applied RELU
+   // std::cout << output << std::endl;
+
+   // map<string, Tensor> test;
+
+   // net->state_dict(test);
+
+
+
+
 
    //std::cout << test.size() << std::endl;
 
