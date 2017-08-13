@@ -511,98 +511,10 @@ namespace torch
                                  false); /* bias */
     }
 
-    class BasicBlock : public Module
-    {
-
-      public:
-
-        int stride;
-        Module::Ptr conv1;
-        Module::Ptr bn1;
-        Module::Ptr relu;
-        Module::Ptr conv2;
-        Module::Ptr bn2;
-        Module::Ptr downsample;
-
-        BasicBlock(int inplanes, int planes, int stride, Module::Ptr downsample)
-        {
-
-          conv1 = conv3x3(inplanes, planes, stride);
-          bn1 = std::make_shared<BatchNorm2d>(planes);
-          relu = std::make_shared<ReLU>();
-          conv2 = conv3x3(planes, planes);
-          bn2 = std::make_shared<BatchNorm2d>(planes);
-          downsample = downsample;
-          stride = stride;
-
-          add_module("conv1", conv1);
-          add_module("bn1", bn1);
-          add_module("conv2", conv2);
-          add_module("bn2", bn2);
-          add_module("downsample", downsample);
-        };
-
-        ~BasicBlock() {};
-
-        Tensor forward(Tensor input)
-        {
-
-          // This is done in case we don't have the
-          // downsample module
-          Tensor residual = input;
-          Tensor out;
-
-          out = conv1->forward(input);
-          out = bn1->forward(out);
-          out = relu->forward(out);
-          out = conv2->forward(out);
-          out = bn2->forward(out);
-
-          // TODO: Add check of the downsample -- make sure it was defined
-
-          residual = downsample->forward(input);
-
-          out += residual;
-          out = relu->forward(out);
-
-          return out;
-        }
-
-    };
 
 
 
     
-    template <class BlockType>
-    class ResNet : public Module
-    {
-
-      public:
-
-        int stride;
-        Module::Ptr conv1;
-        Module::Ptr bn1;
-        Module::Ptr relu;
-        Module::Ptr maxpool;
-        Module::Ptr layer1;
-        Module::Ptr layer2;
-        Module::Ptr layer3;
-        Module::Ptr layer4;
-        Module::Ptr avgpool;
-        Module::Ptr fc;
-
-        // block, layers, num_classes=1000):
-        ResNet(vector<int> layers, int num_classes=1000)
-        {
-
-          conv1 = resnet_base_conv7x7();
-          bn1 = std::make_shared<BatchNorm2d>(64);
-          relu = std::make_shared<ReLU>();
-
-        }
- 
-
-    };
 
 
     class MaxPool2d : public Module
@@ -752,9 +664,6 @@ namespace torch
    };
 
 
-   //Linear(in_features, out_features, bias=True)
-
-
    class Linear : public Module
    {
 
@@ -833,7 +742,173 @@ namespace torch
     };
 
 
+
+    class BasicBlock : public Module
+    {
+
+      public:
+
+        static const int expansion = 1;
+
+        int stride;
+        Module::Ptr conv1;
+        Module::Ptr bn1;
+        Module::Ptr relu;
+        Module::Ptr conv2;
+        Module::Ptr bn2;
+        shared_ptr<Sequential> downsample;
+
+        // Make a standart value
+        BasicBlock(int inplanes, int planes, int stride=1, shared_ptr<Sequential> downsample=nullptr)
+        {
+
+          conv1 = conv3x3(inplanes, planes, stride);
+          bn1 = std::make_shared<BatchNorm2d>(planes);
+          relu = std::make_shared<ReLU>();
+          conv2 = conv3x3(planes, planes);
+          bn2 = std::make_shared<BatchNorm2d>(planes);
+          downsample = downsample;
+          stride = stride;
+
+          add_module("conv1", conv1);
+          add_module("bn1", bn1);
+          add_module("conv2", conv2);
+          add_module("bn2", bn2);
+          add_module("downsample", downsample);
+        };
+
+        ~BasicBlock() {};
+
+        Tensor forward(Tensor input)
+        {
+
+          // This is done in case we don't have the
+          // downsample module
+          Tensor residual = input;
+          Tensor out;
+
+          out = conv1->forward(input);
+          out = bn1->forward(out);
+          out = relu->forward(out);
+          out = conv2->forward(out);
+          out = bn2->forward(out);
+
+          // Check if current block's residual needs downsampling
+          if(downsample != nullptr)
+          {
+
+            residual = downsample->forward(input);
+          }
+
+          out += residual;
+          out = relu->forward(out);
+
+          return out;
+        }
+
+    };
+
+
+    template <class BlockType>
+    class ResNet : public Module
+    {
+
+      public:
+
+        int stride;
+        int in_planes;
+        Module::Ptr conv1;
+        Module::Ptr bn1;
+        Module::Ptr relu;
+        Module::Ptr maxpool;
+        Module::Ptr layer1;
+        Module::Ptr layer2;
+        Module::Ptr layer3;
+        Module::Ptr layer4;
+        Module::Ptr avgpool;
+        Module::Ptr fc;
+
+        // block, layers, num_classes=1000):
+        ResNet(vector<int> layers, int num_classes=1000) :
+
+        // First depth input is the same for all resnet models
+        in_planes(64)
+
+        {
+
+          conv1 = resnet_base_conv7x7();
+          bn1 = std::make_shared<BatchNorm2d>(64);
+          relu = std::make_shared<ReLU>();
+          // Kernel size: 3, Stride: 2, Padding, 1 -- full padding 
+          maxpool = std::make_shared<MaxPool2d>(3, 3, 2, 2, 1, 1);
+
+        }
+
+
+        // def _make_layer(self, block, planes, blocks, stride=1):
+        // downsample = None
+        // if stride != 1 or self.inplanes != planes * block.expansion:
+        //     downsample = nn.Sequential(
+        //         nn.Conv2d(self.inplanes, planes * block.expansion,
+        //                   kernel_size=1, stride=stride, bias=False),
+        //         nn.BatchNorm2d(planes * block.expansion),
+        //     )
+
+        // layers = []
+        // layers.append(block(self.inplanes, planes, stride, downsample))
+        // self.inplanes = planes * block.expansion
+        // for i in range(1, blocks):
+        //     layers.append(block(self.inplanes, planes))
+
+        // return nn.Sequential(*layers)
+
+        
+        Module::Ptr make_layer(int planes, int blocks, int stride)
+        {
+
+          auto new_layer = std::make_shared<torch::Sequential>();
+
+          shared_ptr<Sequential> downsample = nullptr;
+
+          // Check if we need to downsample (spatial or depth)-wise
+          if(stride != 1 || in_planes != in_planes * BlockType::expansion)
+          {
+
+            downsample = std::make_shared<torch::Sequential>();
+
+            downsample->add( std::make_shared<torch::Conv2d>(in_planes,
+                                                             planes * BlockType::expansion,
+                                                             1, 1,
+                                                             stride, stride,
+                                                             0, 0,
+                                                             1,
+                                                             false) );
+
+            downsample->add(std::make_shared<BatchNorm2d>(planes * BlockType::expansion));
+
+          }
+
+          auto first_block = std::make_shared<BlockType>(in_planes, planes, stride, downsample);
+          new_layer->add(first_block);
+
+          in_planes = planes * BlockType::expansion;
+
+          for (int i = 0; i < blocks - 1; ++i)
+          {
+            
+            new_layer->add(std::make_shared<BlockType>(in_planes, planes, 1));
+          }
+
+          return new_layer;
+
+        }
+
+    };
+
+
 }
+
+
 
 int main()
 {
