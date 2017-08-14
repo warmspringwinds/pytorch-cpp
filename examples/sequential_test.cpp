@@ -345,6 +345,9 @@ namespace torch
 
             Tensor output = TENSOR_DEFAULT_TYPE.tensor();
 
+            //std::cout << convolution_weight[10][2][0][0];
+            //std::cout << convolution_weight.sizes();
+
             if (dilated)
             {
 
@@ -733,6 +736,9 @@ namespace torch
 
             // https://github.com/pytorch/pytorch/blob/49ec984c406e67107aae2891d24c8839b7dc7c33/torch/nn/_functions/linear.py
 
+
+            //std::cout << weight[0][40] << std::endl;
+
             Tensor output = input.type().zeros({input.size(0), weight.size(0)});
 
             output.addmm_(0, 1, input, weight.t());
@@ -960,7 +966,7 @@ namespace torch
     };
 
 
-    Module::Ptr resnet18(int num_classes=1000)
+    std::shared_ptr<torch::ResNet<torch::BasicBlock>> resnet18(int num_classes=1000)
     {
 
       return std::shared_ptr<torch::ResNet<torch::BasicBlock>>(
@@ -1004,7 +1010,6 @@ int main()
   for (auto x : dict)
   {
 
-
     H5::DataSet dset = file.openDataSet(x.first);
 
     // Get the number of dimensions for the current tensor
@@ -1033,7 +1038,8 @@ int main()
 
   // Save the actual weights and read them (check) -- weights are different from 0 and 1 s, but still not a proof
   // thest the outcome by comparing the pytorch and the cpp
-  // -- first test on a dummy image
+  // -- first test on a dummy image (check)
+  // -- run the same model in pytorch and get output (for ones input)
   // Wrap up the upper part into separate function
   // write a function to convert the weights to gpu
   // write a dataloader for the surgical tools 
@@ -1047,11 +1053,27 @@ int main()
   // Second one is most probably depth
   // other dims represent the spatial 
 
+  //std::cout << net->tostring() << std::endl;
+
+  //std::cout << net->conv1->convolution_weight; 
+
   auto dummy_input = CPU(kFloat).ones({1, 3, 224, 224});
 
   auto result_tensor = net->forward(dummy_input);
+  std::cout << result_tensor[0][100];
 
-  std::cout << result_tensor;
+
+  //auto result_tensor = net->conv1->forward(dummy_input);
+  //result_tensor = net->bn1->forward(result_tensor);
+
+  //std::cout << result_tensor[0][10][2][40];
+  // for (int i = 0; i < 1000; ++i)
+  // {
+    
+  //   std::cout << result_tensor[0][i].toString() << std::endl;
+  // }
+
+   //std::cout << result_tensor;
 
   return 0;
 }
