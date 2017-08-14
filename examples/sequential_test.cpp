@@ -30,7 +30,12 @@ namespace torch
 
       public:
 
-        Module() {};
+        // Sequential module need the counter
+        // as names of submodules are not provided
+        // sometimes.
+        int submodule_counter;
+
+        Module() : submodule_counter(0) {};
 
         ~Module() {};
 
@@ -39,10 +44,9 @@ namespace torch
         // module objects
         typedef shared_ptr<Module> Ptr;
 
-        Tensor forward(Tensor input) { return input; };
+        virtual Tensor forward(Tensor input) { return input; };
 
         string module_name = "Module";
-
 
         // This function gets overwritten
         // for the leafnodes like Conv2d, AvgPool2d and so on
@@ -85,6 +89,29 @@ namespace torch
 
 
           modules.push_back(pair<string, Module::Ptr>(module_name, module));
+        }
+
+
+
+        // Sometimes, when modules are being added, not all of them
+        // have weights, like RELU. In this case the weights can be
+        // numerated out of order. For example:
+        // net = nn.Sequential(nn.Linear(2, 2), nn.ReLU(), nn.Linear(2, 2))
+        // net.state_dict().keys()
+        // output: ['0.weight', '0.bias', '2.weight', '2.bias']
+
+        // Equivalent behaviour will be seen with the add() function
+        // described below: if relu is added, the counter for weights will
+        // be increased.
+
+        void add(Module::Ptr module)
+        {
+
+          string module_name = std::to_string(submodule_counter);
+
+          add_module(module_name, module);
+
+          submodule_counter++;
         }
 
         // A function to add another modules inside current module
@@ -139,20 +166,13 @@ namespace torch
    {
       public:
 
-        // Sequential module need the counter
-        // as names of submodules are not provided
-        // sometimes.
-        int submodule_counter;
-
-        Sequential() : submodule_counter(0) 
+        Sequential() 
         {
 
           module_name = "Sequential";
         };
 
-        ~Sequential() {};
-
-        //void operator
+        ~Sequential() { };
 
         // Forward for sequential block makes forward pass
         // for each submodule and passed it to the next one
@@ -170,25 +190,6 @@ namespace torch
 
 
         Module::Ptr get(int i) const { return modules[i].second;  }
-
-        // Sometimes, when modules are being added, not all of them
-        // have weights, like RELU. In this case the weights can be
-        // numerated out of order. For example:
-        // net = nn.Sequential(nn.Linear(2, 2), nn.ReLU(), nn.Linear(2, 2))
-        // net.state_dict().keys()
-        // output: ['0.weight', '0.bias', '2.weight', '2.bias']
-
-        // Equivalent behaviour will be seen with the add() function
-        // described below: if relu is added, the counter for weights will
-        // be increased.
-        void add(Module::Ptr module)
-        { 
-          string module_name = std::to_string(submodule_counter);
-
-          add_module(module_name, module);
-
-          submodule_counter++;
-        }
 
    };
 
@@ -761,10 +762,10 @@ namespace torch
         Module::Ptr relu;
         Module::Ptr conv2;
         Module::Ptr bn2;
-        shared_ptr<Sequential> downsample;
+        Module::Ptr downsample;
 
         // Make a standart value
-        BasicBlock(int inplanes, int planes, int stride=1, shared_ptr<Sequential> downsample=nullptr)
+        BasicBlock(int inplanes, int planes, int stride=1, Module::Ptr downsample=nullptr)
         {
 
           conv1 = conv3x3(inplanes, planes, stride);
@@ -772,7 +773,14 @@ namespace torch
           relu = std::make_shared<ReLU>();
           conv2 = conv3x3(planes, planes);
           bn2 = std::make_shared<BatchNorm2d>(planes);
-          downsample = downsample;
+
+          // This doesn't work
+          // downsample = downsample because
+          // the argument gets assigned instead of a class member,
+          // Should probably change the name of the member and argument
+          // to be different
+          this->downsample = downsample;
+
           stride = stride;
 
           add_module("conv1", conv1);
@@ -783,7 +791,6 @@ namespace torch
           if( downsample != nullptr )
           {
 
-            
             add_module("downsample", downsample);
           }
 
@@ -807,10 +814,9 @@ namespace torch
           out = conv2->forward(out);
           out = bn2->forward(out);
 
-          // Check if current block's residual needs downsampling
           if(downsample != nullptr)
           {
-
+        
             residual = downsample->forward(input);
           }
 
@@ -890,19 +896,20 @@ namespace torch
           Tensor output = TENSOR_DEFAULT_TYPE.tensor();
 
           output = conv1->forward(input);
-          output = bn1->forward(input);
-          output = relu->forward(input);
-          output = maxpool->forward(input);
+          output = bn1->forward(output);
+          output = relu->forward(output);
+          output = maxpool->forward(output);
 
-          output = layer1->forward(input);
-          output = layer2->forward(input);
-          output = layer3->forward(input);
-          output = layer4->forward(input);
+          output = layer1->forward(output);
+          output = layer2->forward(output);
+          output = layer3->forward(output);
+          output = layer4->forward(output);
 
-          output = avgpool->forward(input);
+          output = avgpool->forward(output);
+
           // Flatten the output in order to apply linear layer
           output = output.view({output.size(0), -1});
-          output = fc->forward(input);
+          output = fc->forward(output);
 
           return output;
 
@@ -914,10 +921,10 @@ namespace torch
 
           auto new_layer = std::make_shared<torch::Sequential>();
 
-          shared_ptr<Sequential> downsample = nullptr;
+          Module::Ptr downsample = nullptr;
 
-          // Check if we need to downsample (spatial or depth)-wise
-          if(stride != 1 || in_planes != in_planes * BlockType::expansion)
+          // Check if we need to downsample
+          if(stride != 1 || in_planes != planes * BlockType::expansion)
           {
 
             downsample = std::make_shared<torch::Sequential>();
@@ -1022,9 +1029,29 @@ int main()
     delete[] float_buffer;
   }
 
-
   file.close();
-  
 
-   return 0;
+  // Save the actual weights and read them (check) -- weights are different from 0 and 1 s, but still not a proof
+  // thest the outcome by comparing the pytorch and the cpp
+  // -- first test on a dummy image
+  // Wrap up the upper part into separate function
+  // write a function to convert the weights to gpu
+  // write a dataloader for the surgical tools 
+  // train
+
+  // Create a dummy and run it
+
+  // How the input should be formed in terms of size
+  
+  // First one is always for batch size, for sure
+  // Second one is most probably depth
+  // other dims represent the spatial 
+
+  auto dummy_input = CPU(kFloat).ones({1, 3, 224, 224});
+
+  auto result_tensor = net->forward(dummy_input);
+
+  std::cout << result_tensor;
+
+  return 0;
 }
