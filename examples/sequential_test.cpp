@@ -7,6 +7,7 @@ using std tools, and get a forward pass from that model.
 #include "ATen/Type.h"
 #include <sstream>
 #include <map>
+#include "H5Cpp.h"
 
 #define TENSOR_DEFAULT_TYPE CPU(kFloat)
 
@@ -24,7 +25,6 @@ using std::make_shared;
 namespace torch 
 {   
 
-   
    class Module
    {
 
@@ -957,7 +957,7 @@ namespace torch
     {
 
       return std::shared_ptr<torch::ResNet<torch::BasicBlock>>(
-          new torch::ResNet<torch::BasicBlock>({2, 2, 2, 2}, 1000) );
+          new torch::ResNet<torch::BasicBlock>({2, 2, 2, 2}, num_classes) );
     }
 
 
@@ -965,7 +965,7 @@ namespace torch
     {
 
       return std::shared_ptr<torch::ResNet<torch::BasicBlock>>(
-          new torch::ResNet<torch::BasicBlock>({3, 4, 6, 3}, 1000) );
+          new torch::ResNet<torch::BasicBlock>({3, 4, 6, 3}, num_classes) );
     }
 
 
@@ -976,163 +976,55 @@ namespace torch
 int main()
 {
 
-  
   auto net = torch::resnet18();
   
-  //std::cout << net->tostring() << std::endl;
-
+  // Dict provides us with mapping from weights' names
+  // to the pointers to Tensors  
   map<string, Tensor> dict;
-
   net->state_dict(dict);
 
-  int first_dim;
-  int second_dim;
+  // Open the hdf-5 file with weights
+  H5::H5File file = H5::H5File("resnet18.h5", H5F_ACC_RDONLY);
+  // Array to store the shape of the current tensor
+  hsize_t * dims;
+  // Float buffer to intermediately store weights
+  float * float_buffer;
+  // 'Rank' of the tensor
+  int ndims;
+  // Number of elements in the current tensor
+  hsize_t tensor_flattened_size;
 
   for (auto x : dict)
   {
 
-    std::cout << x.first << std::endl  // string (key)
-              << ':' 
-              << x.second.sizes() // string's value 
-              << std::endl ;
+
+    H5::DataSet dset = file.openDataSet(x.first);
+
+    // Get the number of dimensions for the current tensor
+    H5::DataSpace dspace = dset.getSpace();
+    ndims = dspace.getSimpleExtentNdims();
+    tensor_flattened_size = dspace.getSimpleExtentNpoints();
+    dims = new hsize_t[ndims];
+    dspace.getSimpleExtentDims(dims, NULL);
+    float_buffer = new float[tensor_flattened_size];
+    H5::DataSpace mspace(ndims, dims);
+    dset.read(float_buffer, H5::PredType::NATIVE_FLOAT, mspace, 
+    dspace);
+
+    // Reading the raw floats into the Tensor
+    // But the buffer is not owned by Tensor -- we still need to free it up
+    // afterwards
+    auto buffer_tensor = CPU(kFloat).tensorFromBlob(float_buffer, x.second.sizes());
+
+    x.second.copy_(buffer_tensor);
+
+    delete[] dims;
+    delete[] float_buffer;
   }
 
 
+  file.close();
   
-
-  //auto net = std::make_shared<torch::Sequential>();
-  //net->add( std::make_shared<torch::Linear>(3, 3, true) );
-  //net->add( std::make_shared<torch::ReLU>());
-  //net->add( std::make_shared<torch::ReLU>());
-
-
-  //std::cout << net->tostring() << std::endl;
-
-  //net->add( std::make_shared<torch::ReLU>() );
-  // net->add( std::make_shared<torch::Conv2d>(3, 10, 3, 3, 1, 1, 1, 1, 2, 2, 1, false) );
-  // net->add( std::make_shared<torch::ReLU>() );
-  // net->add( std::make_shared<torch::BatchNorm2d>(10) );
-  // //auto netnet = *net;
-
-  //Visualize the architecture
-  //std::cout << net->tostring() << std::endl;
-
-  // Tensor dummy_input = TENSOR_DEFAULT_TYPE.ones({1, 3, 5, 5}) * (-10);
-  // dummy_input[0][0][1][2] = 4;
-
-  // Resolve the pointer issue
-
-  
-  //auto boo = std::make_shared(net);
-
-  // auto net2 = std::make_shared<torch::Sequential>();
-  // net2->add( std::make_shared<torch::BasicBlock>(10, 11) );
-
-  // auto net = std::make_shared<torch::Sequential>();
-
-  // net->add( std::make_shared<torch::BasicBlock>(10, 11) );
-  // net->add( std::make_shared<torch::BasicBlock>(11, 100) );
-
-  // net->add( net2 );
-
-  
-
-   // Tensor dummy_input = TENSOR_DEFAULT_TYPE.ones({3, 3}) * (-10.0);
-
-
-   
-
-   // std::cout << dummy_input << std::endl;
-
-   // Tensor output = net->forward(dummy_input);
-
-
-   // // Print out the results -- should be zeros, because we applied RELU
-   // std::cout << output << std::endl;
-
-   // map<string, Tensor> test;
-
-   // net->state_dict(test);
-
-
-
-
-
-   //std::cout << test.size() << std::endl;
-
-
-  // for (auto x : test)
-  // {
-  //   std::cout << x.first  // string (key)
-  //             << ':' 
-  //             << x.second // string's value 
-  //             << std::endl ;
-  // }
-
-
-  //const H5std_string FILENAME = "data.h5";
-  // open file
-
-
-   // Overall output:
-
-   //    nn.Sequential {
-   //   (1) nn.ReLU
-   //   (2) nn.Conv2d( in_channels=3 out_channels=10 kernel_size=(3, 3) stride=(1, 1) padding=(0, 0) dilation=(1, 1) groups=1 bias=1 )
-   //   (3) nn.ReLU
-   // }
-
-   // (1,1,.,.) = 
-   //   0  0  0
-   //   0  0  0
-   //   0  0  0
-
-   // (1,2,.,.) = 
-   //   0  0  0
-   //   0  0  0
-   //   0  0  0
-
-   // (1,3,.,.) = 
-   //   0  0  0
-   //   0  0  0
-   //   0  0  0
-
-   // (1,4,.,.) = 
-   //   0  0  0
-   //   0  0  0
-   //   0  0  0
-
-   // (1,5,.,.) = 
-   //   0  0  0
-   //   0  0  0
-   //   0  0  0
-
-   // (1,6,.,.) = 
-   //   0  0  0
-   //   0  0  0
-   //   0  0  0
-
-   // (1,7,.,.) = 
-   //   0  0  0
-   //   0  0  0
-   //   0  0  0
-
-   // (1,8,.,.) = 
-   //   0  0  0
-   //   0  0  0
-   //   0  0  0
-
-   // (1,9,.,.) = 
-   //   0  0  0
-   //   0  0  0
-   //   0  0  0
-
-   // (1,10,.,.) = 
-   //   0  0  0
-   //   0  0  0
-   //   0  0  0
-   // [ CPUFloatTensor{1,10,3,3} ]
-
 
    return 0;
 }
