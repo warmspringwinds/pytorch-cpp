@@ -159,6 +159,60 @@ namespace torch
 
         }
 
+
+        void load_weights(string hdf5_filename)
+        {
+
+          // TODO: add the consistency checks
+          // * check if shape of tensors match
+          // * check if there are unused weights
+
+          // Get the name-tensor mapping
+          map<string, Tensor> dict;
+          this->state_dict(dict);
+
+          // Open the hdf-5 file with weights
+          H5::H5File file = H5::H5File(hdf5_filename, H5F_ACC_RDONLY);
+          // Array to store the shape of the current tensor
+          hsize_t * dims;
+          // Float buffer to intermediately store weights
+          float * float_buffer;
+          // 'Rank' of the tensor
+          int ndims;
+          // Number of elements in the current tensor
+          hsize_t tensor_flattened_size;
+
+          for (auto name_tensor_pair : dict)
+          {
+
+            H5::DataSet dset = file.openDataSet(name_tensor_pair.first);
+
+            // Get the number of dimensions for the current tensor
+            H5::DataSpace dspace = dset.getSpace();
+            ndims = dspace.getSimpleExtentNdims();
+            tensor_flattened_size = dspace.getSimpleExtentNpoints();
+            dims = new hsize_t[ndims];
+            dspace.getSimpleExtentDims(dims, NULL);
+            float_buffer = new float[tensor_flattened_size];
+            H5::DataSpace mspace(ndims, dims);
+            dset.read(float_buffer, H5::PredType::NATIVE_FLOAT, mspace, 
+            dspace);
+
+            // Reading the raw floats into the Tensor
+            // But the buffer is not owned by Tensor -- we still need to free it up
+            // afterwards
+            auto buffer_tensor = CPU(kFloat).tensorFromBlob(float_buffer, name_tensor_pair.second.sizes());
+
+            name_tensor_pair.second.copy_(buffer_tensor);
+
+            delete[] dims;
+            delete[] float_buffer;
+          }
+
+          file.close();
+
+        }
+
    };
 
 
@@ -966,7 +1020,7 @@ namespace torch
     };
 
 
-    std::shared_ptr<torch::ResNet<torch::BasicBlock>> resnet18(int num_classes=1000)
+    Module::Ptr resnet18(int num_classes=1000)
     {
 
       return std::shared_ptr<torch::ResNet<torch::BasicBlock>>(
@@ -985,95 +1039,17 @@ namespace torch
 }
 
 
-
 int main()
 {
 
   auto net = torch::resnet18();
+
+  net->load_weights("resnet18.h5");
   
-  // Dict provides us with mapping from weights' names
-  // to the pointers to Tensors  
-  map<string, Tensor> dict;
-  net->state_dict(dict);
-
-  // Open the hdf-5 file with weights
-  H5::H5File file = H5::H5File("resnet18.h5", H5F_ACC_RDONLY);
-  // Array to store the shape of the current tensor
-  hsize_t * dims;
-  // Float buffer to intermediately store weights
-  float * float_buffer;
-  // 'Rank' of the tensor
-  int ndims;
-  // Number of elements in the current tensor
-  hsize_t tensor_flattened_size;
-
-  for (auto x : dict)
-  {
-
-    H5::DataSet dset = file.openDataSet(x.first);
-
-    // Get the number of dimensions for the current tensor
-    H5::DataSpace dspace = dset.getSpace();
-    ndims = dspace.getSimpleExtentNdims();
-    tensor_flattened_size = dspace.getSimpleExtentNpoints();
-    dims = new hsize_t[ndims];
-    dspace.getSimpleExtentDims(dims, NULL);
-    float_buffer = new float[tensor_flattened_size];
-    H5::DataSpace mspace(ndims, dims);
-    dset.read(float_buffer, H5::PredType::NATIVE_FLOAT, mspace, 
-    dspace);
-
-    // Reading the raw floats into the Tensor
-    // But the buffer is not owned by Tensor -- we still need to free it up
-    // afterwards
-    auto buffer_tensor = CPU(kFloat).tensorFromBlob(float_buffer, x.second.sizes());
-
-    x.second.copy_(buffer_tensor);
-
-    delete[] dims;
-    delete[] float_buffer;
-  }
-
-  file.close();
-
-  // Save the actual weights and read them (check) -- weights are different from 0 and 1 s, but still not a proof
-  // thest the outcome by comparing the pytorch and the cpp
-  // -- first test on a dummy image (check)
-  // -- run the same model in pytorch and get output (for ones input)
-  // Wrap up the upper part into separate function
-  // write a function to convert the weights to gpu
-  // write a dataloader for the surgical tools 
-  // train
-
-  // Create a dummy and run it
-
-  // How the input should be formed in terms of size
-  
-  // First one is always for batch size, for sure
-  // Second one is most probably depth
-  // other dims represent the spatial 
-
-  //std::cout << net->tostring() << std::endl;
-
-  //std::cout << net->conv1->convolution_weight; 
-
   auto dummy_input = CPU(kFloat).ones({1, 3, 224, 224});
 
   auto result_tensor = net->forward(dummy_input);
-  std::cout << result_tensor[0][100];
-
-
-  //auto result_tensor = net->conv1->forward(dummy_input);
-  //result_tensor = net->bn1->forward(result_tensor);
-
-  //std::cout << result_tensor[0][10][2][40];
-  // for (int i = 0; i < 1000; ++i)
-  // {
-    
-  //   std::cout << result_tensor[0][i].toString() << std::endl;
-  // }
-
-   //std::cout << result_tensor;
+  std::cout << result_tensor[0][10];
 
   return 0;
 }
