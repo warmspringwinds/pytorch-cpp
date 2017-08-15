@@ -163,9 +163,12 @@ namespace torch
         void load_weights(string hdf5_filename)
         {
 
-          // TODO: add the consistency checks
-          // * check if shape of tensors match
-          // * check if there are unused weights
+          // TODO:
+          // (1) Factor out a separate function the will read file into
+          //     a map<string, Tensor>
+          // (2) Add the consistency checks
+          //    * check if shape of tensors match
+          //    * check if there are unused weights
 
           // Get the name-tensor mapping
           map<string, Tensor> dict;
@@ -1038,18 +1041,85 @@ namespace torch
 
 }
 
+void write_flatten_tensor(string hdf5_filename, Tensor tensor_to_write)
+{
+  // Writes a flatten tensor to an hdf5 file
+  // Just a helper function to compare the outputs from pytorch and pytorch-cpp
+
+  // TODO: extend the function to write tensors without flattening
+  //       add the dataset name as an argument istead of hardcoded "main"
+
+
+  // Flatten
+  tensor_to_write = tensor_to_write.view({-1});
+
+  // Number of elements
+  int size = tensor_to_write.size(0);
+
+  float * float_buffer = new float[size];
+
+  // Cast contents to floats
+  auto tensor_to_write_a = tensor_to_write.accessor<float,1>();
+
+  for (int i = 0; i < size; ++i)
+  {
+    float_buffer[i] = tensor_to_write_a[i];
+  }
+
+  int ndims = 1;
+  hsize_t dims[1] = {size};
+
+  H5::DataSpace space(ndims, dims);
+  H5::H5File file = H5::H5File(hdf5_filename, H5F_ACC_TRUNC);
+  H5::DataSet dataset = H5::DataSet(file.createDataSet("main", H5::PredType::NATIVE_FLOAT, space));
+
+  dataset.write(float_buffer, H5::PredType::NATIVE_FLOAT);
+
+  file.close();
+
+  delete[] float_buffer;
+
+}
+
 
 int main()
 {
 
+  // Inference CPU test
   auto net = torch::resnet18();
-
   net->load_weights("resnet18.h5");
-  
   auto dummy_input = CPU(kFloat).ones({1, 3, 224, 224});
-
   auto result_tensor = net->forward(dummy_input);
-  std::cout << result_tensor[0][10];
+  
+  write_flatten_tensor("dump.h5", result_tensor);
+
+  // foo = foo.view({-1});
+
+  // int size = foo.size(0);
+
+  // // assert foo is 2-dimensional and holds floats.
+
+  // float * float_buffer = new float[size];
+  // auto foo_a = foo.accessor<float,1>();
+
+  // for (int i = 0; i < size; ++i)
+  // {
+  //   float_buffer[i] = foo_a[i];
+  // }
+
+
+  // int ndims = 1;
+  // hsize_t dims[1] = {size};
+
+  // H5::DataSpace space(ndims, dims);
+  // H5::H5File file = H5::H5File("dump.h5", H5F_ACC_TRUNC);
+  // H5::DataSet dataset = H5::DataSet(file.createDataSet("main", H5::PredType::NATIVE_FLOAT, space));
+
+  // dataset.write(float_buffer, H5::PredType::NATIVE_FLOAT);
+
+  // file.close();
+
+  // delete[] float_buffer;
 
   return 0;
 }

@@ -5,3 +5,5 @@ CMake-hdf5-1.8.19/
 *.h5
 *.ipynb
 *.swp
+
+!comparison.ipynb
