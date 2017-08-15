@@ -1093,33 +1093,5 @@ int main()
   
   write_flatten_tensor("dump.h5", result_tensor);
 
-  // foo = foo.view({-1});
-
-  // int size = foo.size(0);
-
-  // // assert foo is 2-dimensional and holds floats.
-
-  // float * float_buffer = new float[size];
-  // auto foo_a = foo.accessor<float,1>();
-
-  // for (int i = 0; i < size; ++i)
-  // {
-  //   float_buffer[i] = foo_a[i];
-  // }
-
-
-  // int ndims = 1;
-  // hsize_t dims[1] = {size};
-
-  // H5::DataSpace space(ndims, dims);
-  // H5::H5File file = H5::H5File("dump.h5", H5F_ACC_TRUNC);
-  // H5::DataSet dataset = H5::DataSet(file.createDataSet("main", H5::PredType::NATIVE_FLOAT, space));
-
-  // dataset.write(float_buffer, H5::PredType::NATIVE_FLOAT);
-
-  // file.close();
-
-  // delete[] float_buffer;
-
   return 0;
 }
