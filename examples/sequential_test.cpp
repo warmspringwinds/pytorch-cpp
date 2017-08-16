@@ -22,7 +22,7 @@ using std::shared_ptr;
 using std::make_shared;
 
 
-namespace torch 
+namespace torch
 {   
 
    class Module
@@ -72,15 +72,22 @@ namespace torch
 
         }
 
+        // vector<pair<string, Ptr>> because we want to emulate
+        // the ordered dict this way, meaning that elements
+        // are stored in the same order they were added
+
         // Like in Pytorch each module stores the modules that it uses
         vector<pair<string, Ptr>> modules;
 
         // And parameters that are explicitly used by the current module
-        vector<pair<string, Tensor>> parameters;
+        map<string, Tensor> parameters;
 
         // Plus buffers which are meant to store running mean and var for batchnorm layers
-        vector<pair<string, Tensor>> buffers;
+        map<string, Tensor> buffers;
 
+        // We store parameter related to gradient computation here and other
+        // tensors so far
+        map<string, Tensor> grads;
         
         // A function to add another modules inside current module
         // Acts as Pytorch's Module.add_module() function
@@ -114,23 +121,6 @@ namespace torch
           submodule_counter++;
         }
 
-        // A function to add another modules inside current module
-        // Acts as Pytorch's Module.register_parameter() function
-        void register_parameter(string parameter_name, Tensor parameter)
-        {
-
-
-          parameters.push_back(pair<string, Tensor>(parameter_name, parameter));
-        }
-
-        // A function to add another modules inside current module
-        // Acts as Pytorch's Module.register_buffer() function
-        void register_buffer(string buffer_name, Tensor buffer)
-        {
-
-
-          buffers.push_back(pair<string, Tensor>(buffer_name, buffer));
-        }
 
         map<string, Tensor> state_dict( map<string, Tensor> & destination,
                                         string prefix="")
@@ -140,11 +130,20 @@ namespace torch
           for(auto name_parameter_pair: parameters)
           {
 
-            destination[prefix + name_parameter_pair.first] = name_parameter_pair.second;
+            // Check if the parameter defined -- for example if we don't use bias
+            // in the convolution, the bias weight will be undefined.
+            // We need this in order to match the state_dict() function of Pytorch
+            if(name_parameter_pair.second.defined())
+            {
+
+
+              destination[prefix + name_parameter_pair.first] = name_parameter_pair.second;
+            }
           }
 
           for(auto name_buffer_pair: buffers)
           {
+
 
             destination[prefix + name_buffer_pair.first] = name_buffer_pair.second;
           }
@@ -160,11 +159,36 @@ namespace torch
         }
 
 
+        template<typename Func>
+        void apply(Func f) 
+        {
+
+            for(auto name_parameter_pair: parameters)
+            {
+
+              f(name_parameter_pair.second);
+            }
+
+            for(auto name_buffer_pair: buffers)
+            {
+
+              f(name_buffer_pair.second);
+            }
+
+            for(auto name_module_pair: modules)
+            {
+
+              name_module_pair.second->apply(f);
+            }
+
+        }
+
+
         void load_weights(string hdf5_filename)
         {
 
           // TODO:
-          // (1) Factor out a separate function the will read file into
+          // (1) Factor out a separate function that will read file into
           //     a map<string, Tensor>
           // (2) Add the consistency checks
           //    * check if shape of tensors match
@@ -280,14 +304,6 @@ namespace torch
 
       public:
 
-          Tensor convolution_weight;
-          Tensor bias_weight;
-
-          Tensor finput;
-          Tensor fgradInput;
-          Tensor ones;
-          Tensor columns;
-
           int in_channels;
           int out_channels;
           int kernel_width;
@@ -329,39 +345,38 @@ namespace torch
                 bias(bias)
           {
 
-            // Initialize weights here
-            convolution_weight = TENSOR_DEFAULT_TYPE.zeros({out_channels, in_channels, kernel_width, kernel_height});
-
             // Register "wight" as a parameter in order to be able to
             // restore it from a file later on
-            register_parameter("weight", convolution_weight);
+            parameters["weight"] = TENSOR_DEFAULT_TYPE.zeros({out_channels,
+                                                              in_channels,
+                                                              kernel_width,
+                                                              kernel_height});
 
-            // don't know why this works yet, doesn't work with TENSOR_DEFAULT_TYPE.tensor();
-            bias_weight = Tensor();
 
             // Check if we need bias for our convolution
             if(bias)
             {
-
-              bias_weight = TENSOR_DEFAULT_TYPE.zeros({out_channels});
-
-              // Register "bias" as a parameter in order to be able to
-              // restore it from a file later on
-              register_parameter("bias", bias_weight);
+              parameters["bias"] = TENSOR_DEFAULT_TYPE.zeros({out_channels});
+            }
+            else
+            {
+              
+              // don't know why this works yet, doesn't work with TENSOR_DEFAULT_TYPE.tensor();
+              parameters["bias"] = Tensor(); 
             }
 
             // These variables are not needed for forward inferece,
             // but we need them in order to call an underlying C
             // function. Later they will be used for backward pass
-            finput = TENSOR_DEFAULT_TYPE.tensor();
-            fgradInput = TENSOR_DEFAULT_TYPE.tensor();
+
+            grads["finput"] = TENSOR_DEFAULT_TYPE.tensor();
+            grads["fgradInput"] = TENSOR_DEFAULT_TYPE.tensor(); 
 
             // These variables depend on # of groups, so far only
             // one group is supported. Needs to be changed to tensor_list
             // in order to support multiple groups.
-            ones = TENSOR_DEFAULT_TYPE.tensor();
-            columns = TENSOR_DEFAULT_TYPE.tensor();
-
+            grads["ones"] = TENSOR_DEFAULT_TYPE.tensor(); 
+            grads["columns"] = TENSOR_DEFAULT_TYPE.tensor();
 
             // There are separate functions for dilated and non-dilated convolutions
             dilated = false;
@@ -402,18 +417,15 @@ namespace torch
 
             Tensor output = TENSOR_DEFAULT_TYPE.tensor();
 
-            //std::cout << convolution_weight[10][2][0][0];
-            //std::cout << convolution_weight.sizes();
-
             if (dilated)
             {
 
               SpatialDilatedConvolution_updateOutput(input,
                                                      output,
-                                                     convolution_weight,
-                                                     bias_weight,
-                                                     columns,
-                                                     ones,
+                                                     parameters["weight"],
+                                                     parameters["bias"],
+                                                     grads["columns"],
+                                                     grads["ones"],
                                                      kernel_width,
                                                      kernel_height,
                                                      stride_width,
@@ -428,10 +440,10 @@ namespace torch
 
               SpatialConvolutionMM_updateOutput(input,
                                                 output,
-                                                convolution_weight,
-                                                bias_weight,
-                                                finput,
-                                                fgradInput,
+                                                parameters["weight"],
+                                                parameters["bias"],
+                                                grads["finput"],
+                                                grads["fgradInput"],
                                                 kernel_width,
                                                 kernel_height,
                                                 stride_width,
@@ -449,12 +461,6 @@ namespace torch
     {
       public:
 
-        Tensor gamma_weight;
-        Tensor beta_bias_weight;
-        Tensor running_mean;
-        Tensor running_var;
-        Tensor save_mean;
-        Tensor save_std;
         int num_features;
         bool affine;
         bool training;
@@ -481,20 +487,16 @@ namespace torch
 
           // Ones initialization is temporarry -- just to avoid
           // division by zero during testing
-          gamma_weight = TENSOR_DEFAULT_TYPE.ones(num_features);
-          beta_bias_weight = TENSOR_DEFAULT_TYPE.zeros(num_features);
-          running_mean = TENSOR_DEFAULT_TYPE.zeros(num_features);
-          running_var = TENSOR_DEFAULT_TYPE.ones(num_features);
+          parameters["weight"] = TENSOR_DEFAULT_TYPE.ones(num_features);
+          parameters["bias"] = TENSOR_DEFAULT_TYPE.zeros(num_features);
 
-          register_parameter("weight", gamma_weight);
-          register_parameter("bias", beta_bias_weight);
-          register_buffer("running_mean", running_mean);
-          register_buffer("running_var", running_var);
+          buffers["running_mean"] = TENSOR_DEFAULT_TYPE.zeros(num_features);
+          buffers["running_var"] = TENSOR_DEFAULT_TYPE.ones(num_features);
 
           // We don't recompute the mean and var during inference
           // So, some variables are initialized for possible future use case.
-          save_mean = TENSOR_DEFAULT_TYPE.ones(num_features);
-          save_std = TENSOR_DEFAULT_TYPE.ones(num_features);
+          grads["save_mean"] = TENSOR_DEFAULT_TYPE.ones(num_features);
+          grads["save_std"] = TENSOR_DEFAULT_TYPE.ones(num_features);
 
         };
 
@@ -525,12 +527,12 @@ namespace torch
 
           BatchNormalization_updateOutput(input,
                                           output,
-                                          gamma_weight,
-                                          beta_bias_weight,
-                                          running_mean,
-                                          running_var,
-                                          save_mean,
-                                          save_std,
+                                          parameters["weight"],
+                                          parameters["bias"],
+                                          buffers["running_mean"],
+                                          buffers["running_var"],
+                                          grads["save_mean"],
+                                          grads["save_std"],
                                           training,
                                           momentum,
                                           eps);
@@ -579,6 +581,7 @@ namespace torch
       public:
 
         Tensor indices;
+
         bool ceil_mode;
         int kernel_width;
         int kernel_height;
@@ -656,7 +659,6 @@ namespace torch
    {
       public:
 
-        Tensor indices;
         bool ceil_mode;
         bool count_include_pad;
         int kernel_width;
@@ -732,8 +734,6 @@ namespace torch
 
       public:
 
-          Tensor weight;
-          Tensor bias_weight;
 
           int in_features;
           int out_features;
@@ -750,21 +750,19 @@ namespace torch
 
             // Initialize weights here
 
-            weight = TENSOR_DEFAULT_TYPE.zeros({out_features, in_features});
-            register_parameter("weight", weight);
-
-            // don't know why this works yet, doesn't work with TENSOR_DEFAULT_TYPE.tensor();
-            bias_weight = Tensor();
+            parameters["weight"] = TENSOR_DEFAULT_TYPE.zeros({out_features, in_features});
 
             // Check if we need bias for our convolution
             if(bias)
             {
 
-              bias_weight = TENSOR_DEFAULT_TYPE.ones({out_features});
+              parameters["bias"] = TENSOR_DEFAULT_TYPE.ones({out_features});
+            }
+            else
+            {
 
-              // Register "bias" as a parameter in order to be able to
-              // restore it from a file later on
-              register_parameter("bias", bias_weight);
+              // don't know why this works yet, doesn't work with TENSOR_DEFAULT_TYPE.tensor();
+              parameters["bias"] = Tensor();
             }
 
           };
@@ -793,17 +791,14 @@ namespace torch
 
             // https://github.com/pytorch/pytorch/blob/49ec984c406e67107aae2891d24c8839b7dc7c33/torch/nn/_functions/linear.py
 
+            Tensor output = input.type().zeros({input.size(0), parameters["weight"].size(0)});
 
-            //std::cout << weight[0][40] << std::endl;
-
-            Tensor output = input.type().zeros({input.size(0), weight.size(0)});
-
-            output.addmm_(0, 1, input, weight.t());
+            output.addmm_(0, 1, input, parameters["weight"].t());
             
             if(bias)
             {
               // TODO: check if in-place resize affects the result
-              output.add_(bias_weight.expand({output.size(0), output.size(1)}));  
+              output.add_(parameters["bias"].expand({output.size(0), output.size(1)}));  
             }
             
             return output; 
@@ -1039,59 +1034,75 @@ namespace torch
     }
 
 
+    void write_flatten_tensor(string hdf5_filename, Tensor tensor_to_write)
+    {
+      // Writes a flatten tensor to an hdf5 file
+      // Just a helper function to compare the outputs from pytorch and pytorch-cpp
+
+      // TODO: extend the function to write tensors without flattening
+      //       add the dataset name as an argument istead of hardcoded "main"
+
+
+      // Flatten
+      tensor_to_write = tensor_to_write.view({-1});
+
+      // Number of elements
+      int size = tensor_to_write.size(0);
+
+      float * float_buffer = new float[size];
+
+      // Cast contents to floats
+      auto tensor_to_write_a = tensor_to_write.accessor<float,1>();
+
+      for (int i = 0; i < size; ++i)
+      {
+        float_buffer[i] = tensor_to_write_a[i];
+      }
+
+      int ndims = 1;
+      hsize_t dims[1] = {size};
+
+      H5::DataSpace space(ndims, dims);
+      H5::H5File file = H5::H5File(hdf5_filename, H5F_ACC_TRUNC);
+      H5::DataSet dataset = H5::DataSet(file.createDataSet("main", H5::PredType::NATIVE_FLOAT, space));
+
+      dataset.write(float_buffer, H5::PredType::NATIVE_FLOAT);
+
+      file.close();
+
+      delete[] float_buffer;
+
+    }
+
+
 }
 
-void write_flatten_tensor(string hdf5_filename, Tensor tensor_to_write)
-{
-  // Writes a flatten tensor to an hdf5 file
-  // Just a helper function to compare the outputs from pytorch and pytorch-cpp
+// template<typename Func> 
+// void hola(Tensor & input, Func f)
+// {
 
-  // TODO: extend the function to write tensors without flattening
-  //       add the dataset name as an argument istead of hardcoded "main"
+//   f(input);
+// }
 
 
-  // Flatten
-  tensor_to_write = tensor_to_write.view({-1});
+// void hola(Tensor & input)
+// {
 
-  // Number of elements
-  int size = tensor_to_write.size(0);
-
-  float * float_buffer = new float[size];
-
-  // Cast contents to floats
-  auto tensor_to_write_a = tensor_to_write.accessor<float,1>();
-
-  for (int i = 0; i < size; ++i)
-  {
-    float_buffer[i] = tensor_to_write_a[i];
-  }
-
-  int ndims = 1;
-  hsize_t dims[1] = {size};
-
-  H5::DataSpace space(ndims, dims);
-  H5::H5File file = H5::H5File(hdf5_filename, H5F_ACC_TRUNC);
-  H5::DataSet dataset = H5::DataSet(file.createDataSet("main", H5::PredType::NATIVE_FLOAT, space));
-
-  dataset.write(float_buffer, H5::PredType::NATIVE_FLOAT);
-
-  file.close();
-
-  delete[] float_buffer;
-
-}
+//   input.copy_( input.toType(CUDA(kFloat)) );
+// }
 
 
 int main()
 {
 
-  // Inference CPU test
+  
+
   auto net = torch::resnet18();
   net->load_weights("resnet18.h5");
   auto dummy_input = CPU(kFloat).ones({1, 3, 224, 224});
   auto result_tensor = net->forward(dummy_input);
-  
-  write_flatten_tensor("dump.h5", result_tensor);
+  torch::write_flatten_tensor("dump.h5", result_tensor);
+
 
   return 0;
 }
