@@ -160,25 +160,35 @@ namespace torch
 
 
         template<typename Func>
-        void apply(Func f) 
+        void apply(Func closure) 
         {
 
             for(auto name_parameter_pair: parameters)
             {
 
-              f(name_parameter_pair.second);
+              if(name_parameter_pair.second.defined())
+              {
+                // maybe catch if it is undefined here
+                parameters[name_parameter_pair.first] = closure(name_parameter_pair.second);
+              }
             }
 
             for(auto name_buffer_pair: buffers)
             {
 
-              f(name_buffer_pair.second);
+              buffers[name_buffer_pair.first] = closure(name_buffer_pair.second);
+            }
+
+            for(auto name_grad_pair: grads)
+            {
+
+              grads[name_grad_pair.first] = closure(name_grad_pair.second);
             }
 
             for(auto name_module_pair: modules)
             {
 
-              name_module_pair.second->apply(f);
+              name_module_pair.second->apply(closure);
             }
 
         }
@@ -361,7 +371,8 @@ namespace torch
             else
             {
               
-              // don't know why this works yet, doesn't work with TENSOR_DEFAULT_TYPE.tensor();
+              // Doesn't work with TENSOR_DEFAULT_TYPE.tensor();,
+              // This is why we use Tensor()
               parameters["bias"] = Tensor(); 
             }
 
@@ -415,7 +426,7 @@ namespace torch
           Tensor forward(Tensor input) 
           { 
 
-            Tensor output = TENSOR_DEFAULT_TYPE.tensor();
+            Tensor output = input.type().tensor();
 
             if (dilated)
             {
@@ -523,7 +534,7 @@ namespace torch
         Tensor forward(Tensor input) 
         {
 
-          Tensor output = TENSOR_DEFAULT_TYPE.tensor();
+          Tensor output = input.type().tensor();
 
           BatchNormalization_updateOutput(input,
                                           output,
@@ -611,7 +622,7 @@ namespace torch
           // TODO: so far this one is hardcoded.
           // Change to make it gpu or cpu depending
           // on the network placement
-          indices =  CPU(kLong).tensor();
+          grads["indices"] = CPU(kLong).tensor(); 
         };
 
 
@@ -620,11 +631,11 @@ namespace torch
         Tensor forward(Tensor input)
         {
 
-          Tensor output = TENSOR_DEFAULT_TYPE.tensor();
+          Tensor output = input.type().tensor();
 
           SpatialMaxPooling_updateOutput(input,
                                          output,
-                                         indices,
+                                         grads["indices"],
                                          kernel_width,
                                          kernel_width,
                                          stride_width,
@@ -694,7 +705,7 @@ namespace torch
         Tensor forward(Tensor input)
         {
 
-          Tensor output = TENSOR_DEFAULT_TYPE.tensor();
+          Tensor output = input.type().tensor();
 
           SpatialAveragePooling_updateOutput(input,
                                              output,
@@ -951,7 +962,7 @@ namespace torch
         Tensor forward(Tensor input)
         {
 
-          Tensor output = TENSOR_DEFAULT_TYPE.tensor();
+          Tensor output = input.type().tensor();
 
           output = conv1->forward(input);
           output = bn1->forward(output);
@@ -1077,31 +1088,44 @@ namespace torch
 
 }
 
-// template<typename Func> 
-// void hola(Tensor & input, Func f)
-// {
-
-//   f(input);
-// }
-
-
-// void hola(Tensor & input)
-// {
-
-//   input.copy_( input.toType(CUDA(kFloat)) );
-// }
-
 
 int main()
 {
 
   
+  // cpu test passed
 
   auto net = torch::resnet18();
+
   net->load_weights("resnet18.h5");
-  auto dummy_input = CPU(kFloat).ones({1, 3, 224, 224});
+
+  net->apply([](Tensor & tensor) {
+
+    return tensor.toBackend(Backend::CUDA);
+
+  });
+
+  auto dummy_input = CUDA(kFloat).ones({1, 3, 224, 224});
+
+  
   auto result_tensor = net->forward(dummy_input);
-  torch::write_flatten_tensor("dump.h5", result_tensor);
+
+  auto tensor_to_write = result_tensor.toBackend(Backend::CPU);
+
+
+  // map<string, Tensor> dict;
+
+  // net->state_dict(dict);
+
+  // std::cout << dict["conv1.weight"] << std::endl;
+
+  // net->load_weights("resnet18.h5");
+  // auto dummy_input = CPU(kFloat).ones({1, 3, 224, 224});
+  // auto result_tensor = net->forward(dummy_input);
+  torch::write_flatten_tensor("dump.h5", tensor_to_write);
+
+  // try to apply to transfer it to cude
+
 
 
   return 0;
