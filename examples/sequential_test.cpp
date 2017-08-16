@@ -193,6 +193,30 @@ namespace torch
 
         }
 
+        void cuda()
+        {
+
+          // Transfer each tensor to GPU
+          this->apply([](Tensor & tensor) {
+
+            return tensor.toBackend(Backend::CUDA);
+
+          });
+
+        }
+
+        void cpu()
+        {
+
+          // Transfer each tensor to CPU
+          this->apply([](Tensor & tensor) {
+
+            return tensor.toBackend(Backend::CPU);
+
+          });
+          
+        }
+
 
         void load_weights(string hdf5_filename)
         {
@@ -1093,40 +1117,20 @@ int main()
 {
 
   
-  // cpu test passed
-
   auto net = torch::resnet18();
 
   net->load_weights("resnet18.h5");
 
-  net->apply([](Tensor & tensor) {
-
-    return tensor.toBackend(Backend::CUDA);
-
-  });
+  net->cuda();
 
   auto dummy_input = CUDA(kFloat).ones({1, 3, 224, 224});
 
-  
   auto result_tensor = net->forward(dummy_input);
 
   auto tensor_to_write = result_tensor.toBackend(Backend::CPU);
 
-
-  // map<string, Tensor> dict;
-
-  // net->state_dict(dict);
-
-  // std::cout << dict["conv1.weight"] << std::endl;
-
-  // net->load_weights("resnet18.h5");
-  // auto dummy_input = CPU(kFloat).ones({1, 3, 224, 224});
-  // auto result_tensor = net->forward(dummy_input);
+  // Save for the later comparison
   torch::write_flatten_tensor("dump.h5", tensor_to_write);
-
-  // try to apply to transfer it to cude
-
-
 
   return 0;
 }
