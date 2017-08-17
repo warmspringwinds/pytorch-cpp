@@ -30,7 +30,7 @@ namespace torch
 
       public:
 
-        // Sequential module need the counter
+        // Sequential module needs the counter
         // as names of submodules are not provided
         // sometimes.
         int submodule_counter;
@@ -87,6 +87,8 @@ namespace torch
 
         // We store parameter related to gradient computation here and other
         // tensors so far
+        // TODO: some members of grads are not related to gradient computation
+        //       and were put there temporary -- put them in a more relevant container.
         map<string, Tensor> grads;
         
         // A function to add another modules inside current module
@@ -579,14 +581,45 @@ namespace torch
 
     // TODO: move this thing out in a separate logical unit: models/resnet
 
-    // A helper function for a 3 by 3 convolution without bias
+    // Helper functions for a 3 by 3 convolution without bias
     // Which is used in every resnet architecture.
-    Module::Ptr conv3x3(int in_planes, int out_planes, int stride=1)
+    Tensor compute_full_padding_for_dilated_conv(Tensor kernel_size, int dilation=1)
     {
 
+      // Convert IntList to Tensor to be able to use element-wise operations
+      Tensor kernel_size_tensor = kernel_size.toType(CPU(kFloat));
+                                  
+      // Compute the actual kernel size after dilation
+      auto actual_kernel_size = (kernel_size_tensor - 1) * (dilation - 1) + kernel_size_tensor;
 
-      return std::make_shared<Conv2d>(in_planes, out_planes, 3, 3, stride, stride, 1, 1, 1, 1, 1, false);
+      // Compute the padding size in order to achieve the 'full padding' mode
+      auto full_padding = (actual_kernel_size / 2).floor_()
+                                                  .toType(CPU(kInt));
+                                                  
+      return full_padding;
     };
+
+    Module::Ptr conv3x3(int in_planes, int out_planes, int stride=1, int dilation=1)
+    {
+
+      // {3, 3} tuple in tensor form.
+      // We need this because next function accepts Tensor
+      Tensor kernel_size = CPU(kInt).tensor({2})
+                                    .fill_(3);
+
+      Tensor padding = compute_full_padding_for_dilated_conv(kernel_size, dilation);
+
+      auto padding_accessor = padding.accessor<int,1>(); 
+
+      return std::make_shared<Conv2d>(in_planes,
+                                      out_planes,
+                                      3, 3,
+                                      stride, stride,
+                                      padding_accessor[0], padding_accessor[1],
+                                      dilation, dilation,
+                                      1, false);
+    };
+
 
     Module::Ptr resnet_base_conv7x7()
     {
@@ -858,13 +891,13 @@ namespace torch
         Module::Ptr downsample;
 
         // Make a standart value
-        BasicBlock(int inplanes, int planes, int stride=1, Module::Ptr downsample=nullptr)
+        BasicBlock(int inplanes, int planes, int stride=1, int dilation=1, Module::Ptr downsample=nullptr)
         {
 
-          conv1 = conv3x3(inplanes, planes, stride);
+          conv1 = conv3x3(inplanes, planes, stride, dilation);
           bn1 = std::make_shared<BatchNorm2d>(planes);
           relu = std::make_shared<ReLU>();
-          conv2 = conv3x3(planes, planes);
+          conv2 = conv3x3(planes, planes, 1, dilation);
           bn2 = std::make_shared<BatchNorm2d>(planes);
 
           // This doesn't work
@@ -928,8 +961,20 @@ namespace torch
 
       public:
 
-        int stride;
+        int output_stride;
         int in_planes;
+
+        // Helper variables to help track
+        // dilation factor and output stride
+        int current_stride;
+        int current_dilation;
+
+        // Variables realted to the type of architecture.
+        // Image Segmentation models don't have average pool
+        // layer and Linear layers are converted to 1x1 convolution
+        bool fully_conv;
+        bool remove_avg_pool;
+
         Module::Ptr conv1;
         Module::Ptr bn1;
         Module::Ptr relu;
@@ -942,12 +987,27 @@ namespace torch
         Module::Ptr fc;
 
         // block, layers, num_classes=1000):
-        ResNet(IntList layers, int num_classes=1000) :
+        ResNet(IntList layers,
+               int num_classes=1000,
+               bool fully_conv=false,
+               bool remove_avg_pool=false,
+               int output_stride=32) :
 
         // First depth input is the same for all resnet models
-        in_planes(64)
+        in_planes(64),
+        output_stride(output_stride),
+        fully_conv(fully_conv),
+        remove_avg_pool(remove_avg_pool)
 
         {
+
+          // Stride is four after first convolution and maxpool layer.
+          // We use this class member to track current output stride in make_layer()
+          current_stride = 4;
+
+          // Dilation hasn't been applied after convolution and maxpool layer.
+          // We use this class member to track dilation factor in make_layer()
+          current_dilation = 1;
 
           conv1 = resnet_base_conv7x7();
           bn1 = std::make_shared<BatchNorm2d>(64);
@@ -961,8 +1021,20 @@ namespace torch
           layer4 = make_layer(512, layers[3], 2);
 
           avgpool = std::make_shared<AvgPool2d>(7, 7);
-
           fc = std::make_shared<Linear>(512 * BlockType::expansion, num_classes);
+
+          if(fully_conv)
+          {
+
+            avgpool = std::make_shared<AvgPool2d>(7, 7,
+                                                  1, 1,
+                                                  3, 3 );
+
+            // 1x1 Convolution -- Convolutionalized Linear Layer
+            fc = std::make_shared<Conv2d>(512 * BlockType::expansion,
+                                          num_classes,
+                                          1, 1);
+          }
 
           add_module("conv1", conv1);
           add_module("bn1", bn1);
@@ -998,10 +1070,19 @@ namespace torch
           output = layer3->forward(output);
           output = layer4->forward(output);
 
-          output = avgpool->forward(output);
+          if(!remove_avg_pool)
+          {
 
-          // Flatten the output in order to apply linear layer
-          output = output.view({output.size(0), -1});
+            output = avgpool->forward(output);
+          }
+
+          if(!fully_conv)
+          {
+
+            // Flatten the output in order to apply linear layer
+            output = output.view({output.size(0), -1});
+          }
+
           output = fc->forward(output);
 
           return output;
@@ -1020,6 +1101,23 @@ namespace torch
           if(stride != 1 || in_planes != planes * BlockType::expansion)
           {
 
+            // See if we already achieved desired output stride
+            if(current_stride == output_stride)
+            {
+
+              // If so, replace subsampling with dilation to preserve
+              // current spatial resolution
+              current_dilation = current_dilation * stride;
+              stride = 1;
+            }
+            else
+            {
+
+              // If not, we perform subsampling
+              current_stride = current_stride * stride;
+            }
+
+
             downsample = std::make_shared<torch::Sequential>();
 
             downsample->add( std::make_shared<torch::Conv2d>(in_planes,
@@ -1035,7 +1133,11 @@ namespace torch
 
           }
 
-          auto first_block = std::make_shared<BlockType>(in_planes, planes, stride, downsample);
+          auto first_block = std::make_shared<BlockType>(in_planes,
+                                                         planes,
+                                                         stride,
+                                                         current_dilation,
+                                                         downsample);
           new_layer->add(first_block);
 
           in_planes = planes * BlockType::expansion;
@@ -1043,7 +1145,10 @@ namespace torch
           for (int i = 0; i < blocks - 1; ++i)
           {
             
-            new_layer->add(std::make_shared<BlockType>(in_planes, planes, 1));
+            new_layer->add(std::make_shared<BlockType>(in_planes,
+                                                       planes,
+                                                       1,
+                                                       current_dilation));
           }
 
           return new_layer;
@@ -1113,10 +1218,10 @@ namespace torch
 }
 
 
+
 int main()
 {
 
-  
   auto net = torch::resnet18();
 
   net->load_weights("resnet18.h5");
@@ -1125,12 +1230,15 @@ int main()
 
   auto dummy_input = CUDA(kFloat).ones({1, 3, 224, 224});
 
-  auto result_tensor = net->forward(dummy_input);
+  Tensor result_tensor;
+
+  result_tensor = net->forward(dummy_input);
 
   auto tensor_to_write = result_tensor.toBackend(Backend::CPU);
 
-  // Save for the later comparison
+  //Save for the later comparison
   torch::write_flatten_tensor("dump.h5", tensor_to_write);
-
+  
+  
   return 0;
 }
