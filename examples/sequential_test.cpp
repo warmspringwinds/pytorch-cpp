@@ -641,11 +641,6 @@ namespace torch
     }
 
 
-
-
-    
-
-
     class MaxPool2d : public Module
     {
       public:
@@ -1028,6 +1023,7 @@ namespace torch
           if(fully_conv)
           {
 
+            // Average pooling with 'full padding' mode
             avgpool = std::make_shared<AvgPool2d>(7, 7,
                                                   1, 1,
                                                   3, 3 );
@@ -1160,22 +1156,6 @@ namespace torch
     };
 
 
-    Module::Ptr resnet18(int num_classes=1000)
-    {
-
-      return std::shared_ptr<torch::ResNet<torch::BasicBlock>>(
-          new torch::ResNet<torch::BasicBlock>({2, 2, 2, 2}, num_classes) );
-    }
-
-
-    Module::Ptr resnet34(int num_classes=1000)
-    {
-
-      return std::shared_ptr<torch::ResNet<torch::BasicBlock>>(
-          new torch::ResNet<torch::BasicBlock>({3, 4, 6, 3}, num_classes) );
-    }
-
-
     void write_flatten_tensor(string hdf5_filename, Tensor tensor_to_write)
     {
       // Writes a flatten tensor to an hdf5 file
@@ -1216,6 +1196,30 @@ namespace torch
 
     }
 
+    
+    Module::Ptr resnet18(int num_classes=1000, bool fully_conv=false, int output_stride=32, bool remove_avg_pool=false)
+    {
+
+      return std::shared_ptr<torch::ResNet<torch::BasicBlock>>(
+             new torch::ResNet<torch::BasicBlock>({2, 2, 2, 2},
+                                                  num_classes,
+                                                  fully_conv,
+                                                  remove_avg_pool,
+                                                  output_stride ));
+    }
+
+
+    Module::Ptr resnet34(int num_classes=1000, bool fully_conv=false, int output_stride=32, bool remove_avg_pool=false)
+    {
+
+      return std::shared_ptr<torch::ResNet<torch::BasicBlock>>(
+             new torch::ResNet<torch::BasicBlock>({3, 4, 6, 3},
+                                                  num_classes,
+                                                  fully_conv,
+                                                  remove_avg_pool,
+                                                  output_stride ));
+    }
+
 
 }
 
@@ -1224,23 +1228,41 @@ namespace torch
 int main()
 {
 
-  auto net = torch::resnet18();
+  // auto net = torch::resnet18();
 
-  net->load_weights("resnet18.h5");
+  // net->load_weights("resnet18.h5");
 
-  net->cuda();
+  // net->cuda();
 
-  auto dummy_input = CUDA(kFloat).ones({1, 3, 224, 224});
+  // auto dummy_input = CUDA(kFloat).ones({1, 3, 224, 224});
 
-  Tensor result_tensor;
+  // Tensor result_tensor;
 
-  result_tensor = net->forward(dummy_input);
+  // result_tensor = net->forward(dummy_input);
 
-  auto tensor_to_write = result_tensor.toBackend(Backend::CPU);
+  // auto tensor_to_write = result_tensor.toBackend(Backend::CPU);
 
-  //Save for the later comparison
-  torch::write_flatten_tensor("dump.h5", tensor_to_write);
-  
+  // //Save for the later comparison
+  // torch::write_flatten_tensor("dump.h5", tensor_to_write);
+
+
+
+  //  1) Install our for of pytorch/vision for segmentation (check)
+  //  2) check if it works (check)
+  //  2.5) write functions for resnet-18-8s -- get output and check sanity of the architecture
+  //  3) Save weights to hdf5 
+  //  4) compare outputs
+  //  5) benchmark speed
+  //  6) clean up the code
+
+
+  auto net = torch::resnet18(21,    /* pascal # of classes */
+                             true,  /* fully convolutional model */
+                             8,     /* we want subsampled by 8 prediction*/
+                             true); /* remove avg pool layer */   
+
+
+  std::cout << net->tostring() << std::endl;
   
   return 0;
 }
