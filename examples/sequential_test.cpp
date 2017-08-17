@@ -219,7 +219,6 @@ namespace torch
           
         }
 
-
         void load_weights(string hdf5_filename)
         {
 
@@ -1220,9 +1219,38 @@ namespace torch
                                                   output_stride ));
     }
 
+    Tensor normalize_batch_for_resnet(Tensor input_batch)
+    {
+
+      // Normalization is usually done on CPU and then sent
+      // to GPU.
+
+      // TODO: create a pull request to add broadcastable
+      // operations
+
+      auto mean_value = CPU(kFloat).ones({1, 3, 1, 1});
+
+      mean_value[0][0][0][0] = 0.485f;
+      mean_value[0][1][0][0] = 0.456f;
+      mean_value[0][2][0][0] = 0.406f;
+
+      // Broadcast the value
+      auto mean_value_broadcasted = mean_value.expand(input_batch.sizes());
+
+      auto std_value = CPU(kFloat).ones({1, 3, 1, 1});
+
+      std_value[0][0][0][0] = 0.229f;
+      std_value[0][1][0][0] = 0.224f;
+      std_value[0][2][0][0] = 0.225f;
+
+      auto std_value_broadcasted = std_value.expand(input_batch.sizes());
+
+      return (input_batch - mean_value_broadcasted) / std_value_broadcasted;
+
+    }
+
 
 }
-
 
 
 int main()
@@ -1252,6 +1280,14 @@ int main()
   //  2.5) write functions for resnet-18-8s -- get output and check sanity of the architecture (check)
   //  3) Save weights to hdf5 (check) -- had some name differences with trainling name 'resnet18_8s.'
   //  4) compare outputs  (check) -- outputs are numerically close
+
+  // Mean value and std -- hardcode maybe
+  // save some img
+  // do the inference
+
+  // Add upsampling layer
+  // plug it in the forward() function
+
   //  4.5) make inference in pytorch-cpp on some real image -- get results
   //      * save img to hdf5, unpack, infer, pack, visualize output in python
   //  5) benchmark speed
@@ -1267,17 +1303,23 @@ int main()
 
   net->cuda();
 
-  auto dummy_input = CUDA(kFloat).ones({1, 3, 224, 224});
+  auto dummy_input = CPU(kFloat).ones({1, 3, 224, 224});
 
-  Tensor result_tensor;
+  // Preprocess data
+  dummy_input = torch::normalize_batch_for_resnet(dummy_input);
 
-  result_tensor = net->forward(dummy_input);
+  // Transfer to GPU
+  dummy_input = dummy_input.toBackend(Backend::CUDA);
+
+  auto result_tensor = net->forward(dummy_input);
 
   auto tensor_to_write = result_tensor.toBackend(Backend::CPU);
 
   std::cout << tensor_to_write << std::endl;
 
-  torch::write_flatten_tensor("dump.h5", tensor_to_write);
+  // torch::write_flatten_tensor("dump.h5", tensor_to_write);
+
+  // std::cout << res << std::endl;
   
   return 0;
 }
