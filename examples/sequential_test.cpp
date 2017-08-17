@@ -1252,6 +1252,8 @@ int main()
   //  2.5) write functions for resnet-18-8s -- get output and check sanity of the architecture (check)
   //  3) Save weights to hdf5 (check) -- had some name differences with trainling name 'resnet18_8s.'
   //  4) compare outputs  (check) -- outputs are numerically close
+  //  4.5) make inference in pytorch-cpp on some real image -- get results
+  //      * save img to hdf5, unpack, infer, pack, visualize output in python
   //  5) benchmark speed
   //  6) clean up the code
 
