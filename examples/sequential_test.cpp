@@ -1249,9 +1249,9 @@ int main()
 
   //  1) Install our for of pytorch/vision for segmentation (check)
   //  2) check if it works (check)
-  //  2.5) write functions for resnet-18-8s -- get output and check sanity of the architecture
-  //  3) Save weights to hdf5 
-  //  4) compare outputs
+  //  2.5) write functions for resnet-18-8s -- get output and check sanity of the architecture (check)
+  //  3) Save weights to hdf5 (check) -- had some name differences with trainling name 'resnet18_8s.'
+  //  4) compare outputs  (check) -- outputs are numerically close
   //  5) benchmark speed
   //  6) clean up the code
 
@@ -1261,8 +1261,21 @@ int main()
                              8,     /* we want subsampled by 8 prediction*/
                              true); /* remove avg pool layer */   
 
+  net->load_weights("resnet18_fcn.h5");
 
-  std::cout << net->tostring() << std::endl;
+  net->cuda();
+
+  auto dummy_input = CUDA(kFloat).ones({1, 3, 224, 224});
+
+  Tensor result_tensor;
+
+  result_tensor = net->forward(dummy_input);
+
+  auto tensor_to_write = result_tensor.toBackend(Backend::CPU);
+
+  std::cout << tensor_to_write << std::endl;
+
+  torch::write_flatten_tensor("dump.h5", tensor_to_write);
   
   return 0;
 }
