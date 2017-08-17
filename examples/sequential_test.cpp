@@ -229,6 +229,8 @@ namespace torch
           // (2) Add the consistency checks
           //    * check if shape of tensors match
           //    * check if there are unused weights
+          // (3) Add check to make sure that the network is on cpu
+          //     before loading weights
 
           // Get the name-tensor mapping
           map<string, Tensor> dict;
