@@ -27,6 +27,9 @@ using std::endl;
 namespace torch
 {   
 
+
+   map<string, Tensor> load(string hdf5_filename);
+
    class Module
    {
 
@@ -221,61 +224,57 @@ namespace torch
           
         }
 
+        
         void load_weights(string hdf5_filename)
         {
 
+    
           // TODO:
-          // (1) Factor out a separate function that will read file into
-          //     a map<string, Tensor>
-          // (2) Add the consistency checks
-          //    * check if shape of tensors match
-          //    * check if there are unused weights
-          // (3) Add check to make sure that the network is on cpu
+          // (1) Add check to make sure that the network is on cpu
           //     before loading weights
 
-          // Get the name-tensor mapping
-          map<string, Tensor> dict;
-          this->state_dict(dict);
+          map<string, Tensor> model_state_dict;
+          map<string, Tensor> checkpoint_dict;
 
-          // Open the hdf-5 file with weights
-          H5::H5File file = H5::H5File(hdf5_filename, H5F_ACC_RDONLY);
-          // Array to store the shape of the current tensor
-          hsize_t * dims;
-          // Float buffer to intermediately store weights
-          float * float_buffer;
-          // 'Rank' of the tensor
-          int ndims;
-          // Number of elements in the current tensor
-          hsize_t tensor_flattened_size;
+          this->state_dict(model_state_dict);
+          checkpoint_dict = load(hdf5_filename);
 
-          for (auto name_tensor_pair : dict)
+          // Compare model_state_dict -> checkpoint_dict keys consistency
+
+          for(auto name_tensor_pair : model_state_dict)
           {
 
-            H5::DataSet dset = file.openDataSet(name_tensor_pair.first);
+            if(checkpoint_dict.count(name_tensor_pair.first) != 1)
+            {
 
-            // Get the number of dimensions for the current tensor
-            H5::DataSpace dspace = dset.getSpace();
-            ndims = dspace.getSimpleExtentNdims();
-            tensor_flattened_size = dspace.getSimpleExtentNpoints();
-            dims = new hsize_t[ndims];
-            dspace.getSimpleExtentDims(dims, NULL);
-            float_buffer = new float[tensor_flattened_size];
-            H5::DataSpace mspace(ndims, dims);
-            dset.read(float_buffer, H5::PredType::NATIVE_FLOAT, mspace, 
-            dspace);
-
-            // Reading the raw floats into the Tensor
-            // But the buffer is not owned by Tensor -- we still need to free it up
-            // afterwards
-            auto buffer_tensor = CPU(kFloat).tensorFromBlob(float_buffer, name_tensor_pair.second.sizes());
-
-            name_tensor_pair.second.copy_(buffer_tensor);
-
-            delete[] dims;
-            delete[] float_buffer;
+              cout << "WARNING: model requires parameter ('" << name_tensor_pair.first << "'') "
+                   << "which is not present in the checkpoint file. Using model's default.";
+            }
           }
 
-          file.close();
+          // Compare checkpoint_dict -> model_state_dict keys consistency
+
+          for(auto name_tensor_pair : checkpoint_dict)
+          {
+
+            if(model_state_dict.count(name_tensor_pair.first) != 1)
+            {
+
+              cout << "WARNING: checkpoint file contains parameter ('" << name_tensor_pair.first << "'') "
+                   << "which is is not required by the model. The parameter is not used.";
+            }
+          }
+
+          for(auto name_tensor_pair : model_state_dict)
+          {
+
+            if(checkpoint_dict.count(name_tensor_pair.first) == 1)
+            {
+
+              // Copy in-place
+              name_tensor_pair.second.copy_(checkpoint_dict[name_tensor_pair.first]);
+            }
+          }
 
         }
 
@@ -1251,7 +1250,7 @@ namespace torch
 
     }
 
-    vector<string> get_hdf5_dataset_keys(string hdf5_filename)
+    vector<string> get_hdf5_file_keys(string hdf5_filename)
     {
 
       // We open and close hdf5 file here. It might be an overkill
@@ -1290,7 +1289,7 @@ namespace torch
       map<string, Tensor> tensor_dict;
 
       // use our get_names function
-      vector<string> tensor_names = get_hdf5_dataset_keys(hdf5_filename);
+      vector<string> tensor_names = get_hdf5_file_keys(hdf5_filename);
 
       H5::H5File file = H5::H5File(hdf5_filename, H5F_ACC_RDONLY);
 
@@ -1423,60 +1422,32 @@ int main()
   //  6) clean up the code
 
 
-  // auto net = torch::resnet18(21,    /* pascal # of classes */
-  //                            true,  /* fully convolutional model */
-  //                            8,     /* we want subsampled by 8 prediction*/
-  //                            true); /* remove avg pool layer */   
+  string hdf5_filename = "resnet18_fcn.h5";
 
-  // net->load_weights("resnet18_fcn.h5");
-
-  // net->cuda();
-
-  // auto dummy_input = CPU(kFloat).ones({1, 3, 224, 224});
-
-  // // Preprocess data
-  // dummy_input = torch::normalize_batch_for_resnet(dummy_input);
-
-  // // Transfer to GPU
-  // dummy_input = dummy_input.toBackend(Backend::CUDA);
-
-  // auto result_tensor = net->forward(dummy_input);
-
-  // auto tensor_to_write = result_tensor.toBackend(Backend::CPU);
-
-  // std::cout << tensor_to_write << std::endl;
-
-  // torch::write_flatten_tensor("dump.h5", tensor_to_write);
-
-  // std::cout << res << std::endl;
+  auto net = torch::resnet18(21,    /* pascal # of classes */
+                             true,  /* fully convolutional model */
+                             8,     /* we want subsampled by 8 prediction*/
+                             true); /* remove avg pool layer */   
 
 
-  // herr_t
-  // file_info(hid_t loc_id, const char *name, const H5L_info_t *linfo, void *opdata)
+  net->load_weights(hdf5_filename);
 
+  net->cuda();
 
-  // std::vector<string> v;
+  auto dummy_input = CPU(kFloat).ones({1, 3, 224, 224});
 
-  // auto file_info = [] (hid_t loc_id, const char *name, const H5L_info_t *linfo, void *opdata) 
-  // {
-  //   std::cout << "Name : " << name << std::endl; // Display the group name.
+  // Transfer to GPU
+  dummy_input = dummy_input.toBackend(Backend::CUDA);
 
-  //   std::vector<string> * names_array_pointer = reinterpret_cast< std::vector<string> *>(opdata);
+  auto result_tensor = net->forward(dummy_input);
 
-  //   names_array_pointer->push_back(string(name));
-  //   return 0;
+  auto tensor_to_write = result_tensor.toBackend(Backend::CPU);
 
-  // };
+  std::cout << tensor_to_write << std::endl;
 
+  torch::write_flatten_tensor("dump.h5", tensor_to_write);
 
-
-
-
-    // argument
-    string hdf5_filename = "resnet18.h5";
-
-    torch::inspect_checkpoint(hdf5_filename);
-
+  std::cout << tensor_to_write << std::endl;
   
   return 0;
 }
