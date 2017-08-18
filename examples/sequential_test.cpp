@@ -232,6 +232,8 @@ namespace torch
           // TODO:
           // (1) Add check to make sure that the network is on cpu
           //     before loading weights
+          // (2) Add support for not float. So far only works with
+          //     float weights only.
 
           map<string, Tensor> model_state_dict;
           map<string, Tensor> checkpoint_dict;
