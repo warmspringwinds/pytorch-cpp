@@ -20,6 +20,8 @@ using std::vector;
 using std::pair;
 using std::shared_ptr;
 using std::make_shared;
+using std::cout;
+using std::endl;
 
 
 namespace torch
@@ -165,6 +167,7 @@ namespace torch
         void apply(Func closure) 
         {
 
+
             for(auto name_parameter_pair: parameters)
             {
 
@@ -192,7 +195,6 @@ namespace torch
 
               name_module_pair.second->apply(closure);
             }
-
         }
 
         void cuda()
@@ -1249,6 +1251,39 @@ namespace torch
 
     }
 
+    std::vector<string> get_hdf5_dataset_keys(string hdf5_filename)
+    {
+
+      // We open and close hdf5 file here. It might be an overkill
+      // as we can open the file once, read keys and read tensors outright,
+      // but this way we also add a simple debugging function to be able to
+      // easily get keys without dealing with HDF5 API directly.
+
+      // Open the file
+      H5::H5File file = H5::H5File(hdf5_filename, H5F_ACC_RDONLY);
+
+      std::vector<string> names;
+
+      // Define a closure to populate our names array
+      auto closure = [] (hid_t loc_id, const char *name, const H5L_info_t *linfo, void *opdata) 
+      {
+
+        std::vector<string> * names_array_pointer = reinterpret_cast< std::vector<string> *>(opdata);
+
+        names_array_pointer->push_back(string(name));
+
+        return 0;
+      };
+
+      // Run our closure and populate array
+      H5Literate(file.getId(), H5_INDEX_NAME, H5_ITER_INC, NULL, closure, &names);
+
+      file.close();
+
+      return names;
+
+    }
+
 
 }
 
@@ -1281,8 +1316,13 @@ int main()
   //  3) Save weights to hdf5 (check) -- had some name differences with trainling name 'resnet18_8s.'
   //  4) compare outputs  (check) -- outputs are numerically close
 
-  // Mean value and std -- hardcode maybe
-  // save some img
+  // Mean value and std -- hardcode maybe (check)
+
+
+  // Add save_dict() and load_dict() for hdf5 files ()
+
+
+  // save some img (not now)
   // do the inference
 
   // Add upsampling layer
@@ -1294,32 +1334,118 @@ int main()
   //  6) clean up the code
 
 
-  auto net = torch::resnet18(21,    /* pascal # of classes */
-                             true,  /* fully convolutional model */
-                             8,     /* we want subsampled by 8 prediction*/
-                             true); /* remove avg pool layer */   
 
-  net->load_weights("resnet18_fcn.h5");
+  
 
-  net->cuda();
 
-  auto dummy_input = CPU(kFloat).ones({1, 3, 224, 224});
 
-  // Preprocess data
-  dummy_input = torch::normalize_batch_for_resnet(dummy_input);
 
-  // Transfer to GPU
-  dummy_input = dummy_input.toBackend(Backend::CUDA);
+  // auto net = torch::resnet18(21,    /* pascal # of classes */
+  //                            true,  /* fully convolutional model */
+  //                            8,     /* we want subsampled by 8 prediction*/
+  //                            true); /* remove avg pool layer */   
 
-  auto result_tensor = net->forward(dummy_input);
+  // net->load_weights("resnet18_fcn.h5");
 
-  auto tensor_to_write = result_tensor.toBackend(Backend::CPU);
+  // net->cuda();
 
-  std::cout << tensor_to_write << std::endl;
+  // auto dummy_input = CPU(kFloat).ones({1, 3, 224, 224});
+
+  // // Preprocess data
+  // dummy_input = torch::normalize_batch_for_resnet(dummy_input);
+
+  // // Transfer to GPU
+  // dummy_input = dummy_input.toBackend(Backend::CUDA);
+
+  // auto result_tensor = net->forward(dummy_input);
+
+  // auto tensor_to_write = result_tensor.toBackend(Backend::CPU);
+
+  // std::cout << tensor_to_write << std::endl;
 
   // torch::write_flatten_tensor("dump.h5", tensor_to_write);
 
   // std::cout << res << std::endl;
+
+
+  // herr_t
+  // file_info(hid_t loc_id, const char *name, const H5L_info_t *linfo, void *opdata)
+
+
+  // std::vector<string> v;
+
+  // auto file_info = [] (hid_t loc_id, const char *name, const H5L_info_t *linfo, void *opdata) 
+  // {
+  //   std::cout << "Name : " << name << std::endl; // Display the group name.
+
+  //   std::vector<string> * names_array_pointer = reinterpret_cast< std::vector<string> *>(opdata);
+
+  //   names_array_pointer->push_back(string(name));
+  //   return 0;
+
+  // };
+
+
+
+    // argument
+    string hdf5_filename = "resnet18.h5";
+
+
+    std::vector<string> names = torch::get_hdf5_dataset_keys(hdf5_filename);
+
+    for(auto name: names)
+    {
+
+      std::cout << name << std::endl;
+    }
+
+
+    // // Array to store the shape of the current tensor
+    // hsize_t * dims;
+    // // Float buffer to intermediately store weights
+    // float * float_buffer;
+    // // 'Rank' of the tensor
+    // int ndims;
+    // // Number of elements in the current tensor
+    // hsize_t tensor_flattened_size;
+
+    // for (auto name_tensor_pair : dict)
+    // {
+
+    //   H5::DataSet dset = file.openDataSet(name_tensor_pair.first);
+
+    //   // Get the number of dimensions for the current tensor
+    //   H5::DataSpace dspace = dset.getSpace();
+    //   ndims = dspace.getSimpleExtentNdims();
+    //   tensor_flattened_size = dspace.getSimpleExtentNpoints();
+    //   dims = new hsize_t[ndims];
+    //   dspace.getSimpleExtentDims(dims, NULL);
+    //   float_buffer = new float[tensor_flattened_size];
+    //   H5::DataSpace mspace(ndims, dims);
+    //   dset.read(float_buffer, H5::PredType::NATIVE_FLOAT, mspace, 
+    //   dspace);
+
+    //   // Reading the raw floats into the Tensor
+    //   // But the buffer is not owned by Tensor -- we still need to free it up
+    //   // afterwards
+    //   auto buffer_tensor = CPU(kFloat).tensorFromBlob(float_buffer, name_tensor_pair.second.sizes());
+
+    //   name_tensor_pair.second.copy_(buffer_tensor);
+
+    //   delete[] dims;
+    //   delete[] float_buffer;
+    // }
+
+    //file.close();
+
+  
+  // open file -- get all the dataset names
+
+
+
+
+
+
   
   return 0;
 }
