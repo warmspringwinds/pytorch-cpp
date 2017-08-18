@@ -29,6 +29,7 @@ namespace torch
 
 
    map<string, Tensor> load(string hdf5_filename);
+   void save( string hdf5_filename, map<string, Tensor> dict_to_write );
 
    class Module
    {
@@ -222,6 +223,16 @@ namespace torch
 
           });
           
+        }
+
+        void save_weights(string hdf5_filename)
+        {
+
+          map<string, Tensor> model_state_dict;
+
+          this->state_dict(model_state_dict);
+
+          save(hdf5_filename, model_state_dict);
         }
 
         
@@ -1492,17 +1503,25 @@ int main()
 
   //net->cuda();
 
-  auto tensor_to_write = CPU(kFloat).ones({1, 3, 224, 224});
-  tensor_to_write[0][1][100][20] = 1000;
+  // auto tensor_to_write = CPU(kFloat).ones({1, 3, 224, 224});
+  // tensor_to_write[0][1][100][20] = 1000;
 
-  map<string, Tensor> dict;
+  // map<string, Tensor> dict;
 
-  dict["one"] = tensor_to_write;
-  dict["two"] = tensor_to_write;
+  // dict["one"] = tensor_to_write;
+  // dict["two"] = tensor_to_write;
 
-  torch::save("new.h5", dict);
+  // torch::save("new.h5", dict);
 
 
+  auto net = torch::resnet18(21,    /* pascal # of classes */
+                             true,  /* fully convolutional model */
+                             8,     /* we want subsampled by 8 prediction*/
+                             true); /* remove avg pool layer */   
+
+
+  net->save_weights("resnet_from_cpp.h5");
+  
   // // Transfer to GPU
   // dummy_input = dummy_input.toBackend(Backend::CUDA);
 
