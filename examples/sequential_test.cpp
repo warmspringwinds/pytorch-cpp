@@ -22,6 +22,7 @@ using std::shared_ptr;
 using std::make_shared;
 using std::cout;
 using std::endl;
+using std::tie;
 
 
 namespace torch
@@ -1439,6 +1440,15 @@ namespace torch
       }
     }
 
+    Tensor upsample_bilinear(Tensor input_tensor, int output_height, int output_width)
+    {
+
+      Tensor output = input_tensor.type().tensor();
+
+      SpatialUpSamplingBilinear_updateOutput(input_tensor, output, output_height, output_width);
+
+      return output;
+    }
 
 }
 
@@ -1446,47 +1456,15 @@ namespace torch
 int main()
 {
 
-  // auto net = torch::resnet18();
+  // Add upsampling layer or just as a function like in the pytorch.nn.F.upsample
 
-  // net->load_weights("resnet18.h5");
+  // Connect OpenCV
 
-  // net->cuda();
+  // Try to just visualize the inferred image
 
-  // auto dummy_input = CUDA(kFloat).ones({1, 3, 224, 224});
+  // Connect a web cam
 
-  // Tensor result_tensor;
-
-  // result_tensor = net->forward(dummy_input);
-
-  // auto tensor_to_write = result_tensor.toBackend(Backend::CPU);
-
-  // //Save for the later comparison
-  // torch::write_flatten_tensor("dump.h5", tensor_to_write);
-
-  //  1) Install our for of pytorch/vision for segmentation (check)
-  //  2) check if it works (check)
-  //  2.5) write functions for resnet-18-8s -- get output and check sanity of the architecture (check)
-  //  3) Save weights to hdf5 (check) -- had some name differences with trainling name 'resnet18_8s.'
-  //  4) compare outputs  (check) -- outputs are numerically close
-
-  // Mean value and std -- hardcode maybe (check)
-
-
-  // Add save_dict() (check) and load_dict() (check) for hdf5 files ()
-
-
-  // save some img 
-  // do the inference ( now )
-
-  // Add upsampling layer
-  // plug it in the forward() function
-
-  //  4.5) make inference in pytorch-cpp on some real image -- get results
-  //      * save img to hdf5, unpack, infer, pack, visualize output in python
-  //  5) benchmark speed
-  //  6) clean up the code
-
-  
+  // Check for memory leaks by running for a while
 
   auto net = torch::resnet18(21,    /* pascal # of classes */
                              true,  /* fully convolutional model */
@@ -1495,41 +1473,38 @@ int main()
 
 
   net->load_weights("resnet18_fcn.h5");
-
-  auto vittal_dict = torch::load("vittal.h5");
-
   net->cuda();
+  auto img = torch::load("vittal.h5")["main"].toBackend(Backend::CUDA);
+  auto img_batch_sizes = img.sizes();
+  int output_height = img_batch_sizes[2];
+  int output_width = img_batch_sizes[3];
 
-  auto tensor_cuda = vittal_dict["main"].toBackend(Backend::CUDA);
 
-  auto result = net->forward(tensor_cuda);
+  auto subsampled_prediction = net->forward(img);
+  auto full_prediction = torch::upsample_bilinear(subsampled_prediction, output_height, output_width);
 
-  result = result.toBackend(Backend::CPU);
+  cout << full_prediction << endl;
 
-  Tensor values, index;
 
-  std::tie(values, index) =  max(result, 1, true);
+  // net->cuda();
 
-  map<string, Tensor> dict_to_save;
+  // auto tensor_cuda = vittal_dict["main"].toBackend(Backend::CUDA);
 
-  dict_to_save["main"] = index.toType(CPU(kFloat));
+  // auto result = net->forward(tensor_cuda);
 
-  torch::save("resi.h5", dict_to_save);
+  // result = result.toBackend(Backend::CPU);
 
-  //cout << index << endl;
+  // Tensor values, index;
 
-  // // Transfer to GPU
-  // dummy_input = dummy_input.toBackend(Backend::CUDA);
+  // std::tie(values, index) = max(result, 1, true);
 
-  // auto result_tensor = net->forward(dummy_input);
+  // map<string, Tensor> dict_to_save;
 
-  // auto tensor_to_write = result_tensor.toBackend(Backend::CPU);
+  // dict_to_save["main"] = index.toType(CPU(kFloat));
 
-  // std::cout << tensor_to_write << std::endl;
+  // torch::save("resi.h5", dict_to_save);
 
-  // torch::write_flatten_tensor("dump.h5", tensor_to_write);
-
-  // std::cout << tensor_to_write << std::endl;
+  
 
   
   return 0;
