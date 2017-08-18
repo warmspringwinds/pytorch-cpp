@@ -134,6 +134,8 @@ namespace torch
                                         string prefix="")
         {
 
+          // TODO: add another function that will not accept any parameters
+          // and just return the state_dict()
 
           for(auto name_parameter_pair: parameters)
           {
@@ -1520,8 +1522,9 @@ int main()
                              true); /* remove avg pool layer */   
 
 
+
   net->save_weights("resnet_from_cpp.h5");
-  
+
   // // Transfer to GPU
   // dummy_input = dummy_input.toBackend(Backend::CUDA);
 
