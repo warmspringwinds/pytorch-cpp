@@ -1463,8 +1463,6 @@ int main()
   // //Save for the later comparison
   // torch::write_flatten_tensor("dump.h5", tensor_to_write);
 
-
-
   //  1) Install our for of pytorch/vision for segmentation (check)
   //  2) check if it works (check)
   //  2.5) write functions for resnet-18-8s -- get output and check sanity of the architecture (check)
@@ -1474,11 +1472,11 @@ int main()
   // Mean value and std -- hardcode maybe (check)
 
 
-  // Add save_dict() and load_dict() (check) for hdf5 files ()
+  // Add save_dict() (check) and load_dict() (check) for hdf5 files ()
 
 
-  // save some img (not now)
-  // do the inference
+  // save some img 
+  // do the inference ( now )
 
   // Add upsampling layer
   // plug it in the forward() function
@@ -1488,33 +1486,7 @@ int main()
   //  5) benchmark speed
   //  6) clean up the code
 
-  // write the save_dict() and save()
-
-
-
-
-  //string hdf5_filename = "resnet18_fcn.h5";
-
-  //auto net = torch::resnet18(21,    /* pascal # of classes */
-  //                           true,  /* fully convolutional model */
-  //                           8,     /* we want subsampled by 8 prediction*/
-  //                           true); /* remove avg pool layer */   
-
-
-  //net->load_weights(hdf5_filename);
-
-  //net->cuda();
-
-  // auto tensor_to_write = CPU(kFloat).ones({1, 3, 224, 224});
-  // tensor_to_write[0][1][100][20] = 1000;
-
-  // map<string, Tensor> dict;
-
-  // dict["one"] = tensor_to_write;
-  // dict["two"] = tensor_to_write;
-
-  // torch::save("new.h5", dict);
-
+  
 
   auto net = torch::resnet18(21,    /* pascal # of classes */
                              true,  /* fully convolutional model */
@@ -1522,8 +1494,29 @@ int main()
                              true); /* remove avg pool layer */   
 
 
+  net->load_weights("resnet18_fcn.h5");
 
-  net->save_weights("resnet_from_cpp.h5");
+  auto vittal_dict = torch::load("vittal.h5");
+
+  net->cuda();
+
+  auto tensor_cuda = vittal_dict["main"].toBackend(Backend::CUDA);
+
+  auto result = net->forward(tensor_cuda);
+
+  result = result.toBackend(Backend::CPU);
+
+  Tensor values, index;
+
+  std::tie(values, index) =  max(result, 1, true);
+
+  map<string, Tensor> dict_to_save;
+
+  dict_to_save["main"] = index.toType(CPU(kFloat));
+
+  torch::save("resi.h5", dict_to_save);
+
+  //cout << index << endl;
 
   // // Transfer to GPU
   // dummy_input = dummy_input.toBackend(Backend::CUDA);
