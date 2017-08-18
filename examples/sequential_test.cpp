@@ -1363,6 +1363,58 @@ namespace torch
       return tensor_dict;
     }
 
+    void save( string hdf5_filename, map<string, Tensor> dict_to_write)
+    {
+
+      H5::H5File file = H5::H5File(hdf5_filename, H5F_ACC_TRUNC);
+
+      for(auto name_tensor_pair : dict_to_write)
+      {
+
+        auto tensor_to_write = name_tensor_pair.second;
+        auto tensor_name = name_tensor_pair.first;
+
+        auto dims = tensor_to_write.sizes();
+
+        // The dimensionality of the tensor
+        auto ndims = tensor_to_write.ndimension();
+        auto tensor_flattened_size = tensor_to_write.numel();
+        auto tensor_to_write_flatten = tensor_to_write.view({-1});
+        auto tensor_to_write_flatten_accessor = tensor_to_write_flatten.accessor<float,1>();
+
+        float * float_buffer = new float[tensor_flattened_size];
+
+        // Convert an array of ints into an array of hsize_t
+        auto dims_hsize_t = new hsize_t[ndims];
+
+        for (int i = 0; i < ndims; ++i)
+        {
+          dims_hsize_t[i] = dims[i];
+        }
+
+        for (int i = 0; i < tensor_flattened_size; ++i)
+        {
+
+           float_buffer[i] = tensor_to_write_flatten_accessor[i];
+        }
+
+        H5::DataSpace space(ndims, dims_hsize_t);
+
+        H5::DataSet dataset = H5::DataSet(file.createDataSet(tensor_name,
+                                                             H5::PredType::NATIVE_FLOAT,
+                                                             space));
+
+
+        dataset.write(float_buffer, H5::PredType::NATIVE_FLOAT);
+
+        delete[] float_buffer;
+        
+      }
+
+      file.close();
+
+    }
+
     void inspect_checkpoint(string hdf5_filename)
     {
 
@@ -1409,7 +1461,7 @@ int main()
   // Mean value and std -- hardcode maybe (check)
 
 
-  // Add save_dict() and load_dict() for hdf5 files ()
+  // Add save_dict() and load_dict() (check) for hdf5 files ()
 
 
   // save some img (not now)
@@ -1423,33 +1475,47 @@ int main()
   //  5) benchmark speed
   //  6) clean up the code
 
-
-  string hdf5_filename = "resnet18_fcn.h5";
-
-  auto net = torch::resnet18(21,    /* pascal # of classes */
-                             true,  /* fully convolutional model */
-                             8,     /* we want subsampled by 8 prediction*/
-                             true); /* remove avg pool layer */   
+  // write the save_dict() and save()
 
 
-  net->load_weights(hdf5_filename);
 
-  net->cuda();
 
-  auto dummy_input = CPU(kFloat).ones({1, 3, 224, 224});
+  //string hdf5_filename = "resnet18_fcn.h5";
 
-  // Transfer to GPU
-  dummy_input = dummy_input.toBackend(Backend::CUDA);
+  //auto net = torch::resnet18(21,    /* pascal # of classes */
+  //                           true,  /* fully convolutional model */
+  //                           8,     /* we want subsampled by 8 prediction*/
+  //                           true); /* remove avg pool layer */   
 
-  auto result_tensor = net->forward(dummy_input);
 
-  auto tensor_to_write = result_tensor.toBackend(Backend::CPU);
+  //net->load_weights(hdf5_filename);
 
-  std::cout << tensor_to_write << std::endl;
+  //net->cuda();
 
-  torch::write_flatten_tensor("dump.h5", tensor_to_write);
+  auto tensor_to_write = CPU(kFloat).ones({1, 3, 224, 224});
+  tensor_to_write[0][1][100][20] = 1000;
 
-  std::cout << tensor_to_write << std::endl;
+  map<string, Tensor> dict;
+
+  dict["one"] = tensor_to_write;
+  dict["two"] = tensor_to_write;
+
+  torch::save("new.h5", dict);
+
+
+  // // Transfer to GPU
+  // dummy_input = dummy_input.toBackend(Backend::CUDA);
+
+  // auto result_tensor = net->forward(dummy_input);
+
+  // auto tensor_to_write = result_tensor.toBackend(Backend::CPU);
+
+  // std::cout << tensor_to_write << std::endl;
+
+  // torch::write_flatten_tensor("dump.h5", tensor_to_write);
+
+  // std::cout << tensor_to_write << std::endl;
+
   
   return 0;
 }
