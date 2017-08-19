@@ -1479,40 +1479,14 @@ namespace torch
 int main()
 {
 
-  // Add upsampling layer or just as a function like in the pytorch.nn.F.upsample (check) 4pm
+  // Check full equvalence of the normalize_batch_for_resnet() function
 
-  // Connect OpenCV (check) 4:15pm 
+  // Finish the frame grabber example and run for a considerable time to
+  // check for memory leaks
 
-  // Try to just visualize the inferred image 5pm
+  // Create an example with smooth segmentation with web cam
 
-  // Connect a web cam
-
-  // Check for memory leaks by running for a while
-
-
-
-  // auto net = torch::resnet18(21,    /* pascal # of classes */
-  //                            true,  /* fully convolutional model */
-  //                            8,     /* we want subsampled by 8 prediction*/
-  //                            true); /* remove avg pool layer */   
-
-
-  // net->load_weights("resnet18_fcn.h5");
-  // net->cuda();
-  // auto img = torch::load("vittal.h5")["main"].toBackend(Backend::CUDA);
-  // auto img_batch_sizes = img.sizes();
-  // int output_height = img_batch_sizes[2];
-  // int output_width = img_batch_sizes[3];
-
-
-  // auto subsampled_prediction = net->forward(img);
-  // auto full_prediction = torch::upsample_bilinear(subsampled_prediction, output_height, output_width);
-
-  // cout << full_prediction << endl;
-
-
-   //namedWindow("Display Image", WINDOW_AUTOSIZE );
-   //waitKey(0);
+  // Structure the project in a better way
 
   auto net = torch::resnet18(21,    /* pascal # of classes */
                              true,  /* fully convolutional model */
