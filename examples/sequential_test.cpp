@@ -1444,7 +1444,7 @@ int main()
 
   // ----- go home
 
-  // Check full equvalence of the normalize_batch_for_resnet() function
+  // Check full equvalence of the normalize_batch_for_resnet() function (check)
 
   // Finish the frame grabber example and run for a considerable time to
   // check for memory leaks
@@ -1462,6 +1462,15 @@ int main()
   // write the fcn wrapper
 
   // test the resnet-34
+
+
+  //--------------
+
+ // Learn how to display transparancy -- display input frame with some random transparancy
+
+ // Use the acquired values as a transparancy layer values
+
+ // Write a function to convert back from Tensor to Mat
 
   auto net = torch::resnet18(21,    /* pascal # of classes */
                              true,  /* fully convolutional model */
@@ -1499,6 +1508,22 @@ int main()
   // Outputs height x width x depth tensor converted from Opencv's Mat
   auto input_tensor = torch::convert_opencv_mat_image_to_tensor(frame);
 
+
+  auto di = torch::load("frame.h5");
+
+  input_tensor = di["main"];
+
+  // save image, run inference here and 
+
+  // save it without forming a batch
+
+
+
+  //cout << input_tensor << endl;
+
+
+
+
   auto output_height = input_tensor.size(0);
   auto output_width = input_tensor.size(1);
 
@@ -1520,11 +1545,14 @@ int main()
 
   cout << full_prediction << endl;
 
+
+
+
   map<string, Tensor> dict;
 
-  dict["main"] = full_prediction.toBackend(Backend::CPU);
+  dict["main"] = full_prediction.toType(CPU(kFloat));
 
-  torch::save("opencv.h5", dict);
+  torch::save("pred.h5", dict);
   
   return 0;
 }
