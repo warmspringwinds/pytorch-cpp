@@ -1175,47 +1175,6 @@ namespace torch
 
     };
 
-
-    void write_flatten_tensor(string hdf5_filename, Tensor tensor_to_write)
-    {
-      // Writes a flatten tensor to an hdf5 file
-      // Just a helper function to compare the outputs from pytorch and pytorch-cpp
-
-      // TODO: extend the function to write tensors without flattening
-      //       add the dataset name as an argument istead of hardcoded "main"
-
-
-      // Flatten
-      tensor_to_write = tensor_to_write.view({-1});
-
-      // Number of elements
-      int size = tensor_to_write.size(0);
-
-      float * float_buffer = new float[size];
-
-      // Cast contents to floats
-      auto tensor_to_write_a = tensor_to_write.accessor<float,1>();
-
-      for (int i = 0; i < size; ++i)
-      {
-        float_buffer[i] = tensor_to_write_a[i];
-      }
-
-      int ndims = 1;
-      hsize_t dims[1] = {size};
-
-      H5::DataSpace space(ndims, dims);
-      H5::H5File file = H5::H5File(hdf5_filename, H5F_ACC_TRUNC);
-      H5::DataSet dataset = H5::DataSet(file.createDataSet("main", H5::PredType::NATIVE_FLOAT, space));
-
-      dataset.write(float_buffer, H5::PredType::NATIVE_FLOAT);
-
-      file.close();
-
-      delete[] float_buffer;
-
-    }
-
     
     Module::Ptr resnet18(int num_classes=1000, bool fully_conv=false, int output_stride=32, bool remove_avg_pool=false)
     {
@@ -1479,6 +1438,12 @@ namespace torch
 int main()
 {
 
+  // visualize result in opencv and not in jupyter notebook
+
+  // Get the full web cam stream
+
+  // ----- go home
+
   // Check full equvalence of the normalize_batch_for_resnet() function
 
   // Finish the frame grabber example and run for a considerable time to
@@ -1487,6 +1452,16 @@ int main()
   // Create an example with smooth segmentation with web cam
 
   // Structure the project in a better way
+
+  // Add a correct linking to Opencv on the local machine
+
+  // Get the build running on laptop for demo
+
+  // upload all the transferred models
+
+  // write the fcn wrapper
+
+  // test the resnet-34
 
   auto net = torch::resnet18(21,    /* pascal # of classes */
                              true,  /* fully convolutional model */
@@ -1508,22 +1483,21 @@ int main()
   //{ 
 
       // Don't forget about the Blue Green Red channel order
-
-      Mat rgb_frame;
       cap >> frame; // get a new frame from camera
       
-      cvtColor(frame, rgb_frame, COLOR_BGR2RGB);
+      // BGR to RGB which is what our networks was trained on
+      cvtColor(frame, frame, COLOR_BGR2RGB);
 
 
       //GaussianBlur(edges, edges, Size(7,7), 1.5, 1.5);
       //Canny(edges, edges, 0, 30, 3);
-      imshow("edges", rgb_frame);
+      imshow("edges", frame);
     //  if(waitKey(30) >= 0) break;
   //}
   // the camera will be deinitialized automatically in VideoCapture destructor
 
   // Outputs height x width x depth tensor converted from Opencv's Mat
-  auto input_tensor = torch::convert_opencv_mat_image_to_tensor(rgb_frame);
+  auto input_tensor = torch::convert_opencv_mat_image_to_tensor(frame);
 
   auto output_height = input_tensor.size(0);
   auto output_width = input_tensor.size(1);
