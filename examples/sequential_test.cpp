@@ -9,6 +9,8 @@ using std tools, and get a forward pass from that model.
 #include <map>
 #include "H5Cpp.h"
 
+#include <opencv2/opencv.hpp>
+
 #define TENSOR_DEFAULT_TYPE CPU(kFloat)
 
 using namespace at;
@@ -23,6 +25,8 @@ using std::make_shared;
 using std::cout;
 using std::endl;
 using std::tie;
+
+using namespace cv;
 
 
 namespace torch
@@ -1385,7 +1389,7 @@ namespace torch
       for(auto name_tensor_pair : dict_to_write)
       {
 
-        auto tensor_to_write = name_tensor_pair.second;
+        auto tensor_to_write = name_tensor_pair.second.contiguous();
         auto tensor_name = name_tensor_pair.first;
 
         auto dims = tensor_to_write.sizes();
@@ -1450,21 +1454,65 @@ namespace torch
       return output;
     }
 
+    Tensor convert_opencv_mat_image_to_tensor(Mat input_mat)
+    {
+
+      // TODO: 
+      // (1) double-check if this kind of conversion will always work
+      //     http://docs.opencv.org/3.1.0/d3/d63/classcv_1_1Mat.html in 'Detailed Description'
+      // (2) so far only works with byte representation of Mat
+
+      unsigned char *data = (unsigned char*)(input_mat.data);
+
+      int output_height = input_mat.rows;
+      int output_width = input_mat.cols;
+
+      auto output_tensor = CPU(kByte).tensorFromBlob(data, {output_height, output_width, 3});
+
+      return output_tensor;
+
+    }
+
 }
 
 
 int main()
 {
 
-  // Add upsampling layer or just as a function like in the pytorch.nn.F.upsample
+  // Add upsampling layer or just as a function like in the pytorch.nn.F.upsample (check) 4pm
 
-  // Connect OpenCV
+  // Connect OpenCV (check) 4:15pm 
 
-  // Try to just visualize the inferred image
+  // Try to just visualize the inferred image 5pm
 
   // Connect a web cam
 
   // Check for memory leaks by running for a while
+
+
+
+  // auto net = torch::resnet18(21,    /* pascal # of classes */
+  //                            true,  /* fully convolutional model */
+  //                            8,     /* we want subsampled by 8 prediction*/
+  //                            true); /* remove avg pool layer */   
+
+
+  // net->load_weights("resnet18_fcn.h5");
+  // net->cuda();
+  // auto img = torch::load("vittal.h5")["main"].toBackend(Backend::CUDA);
+  // auto img_batch_sizes = img.sizes();
+  // int output_height = img_batch_sizes[2];
+  // int output_width = img_batch_sizes[3];
+
+
+  // auto subsampled_prediction = net->forward(img);
+  // auto full_prediction = torch::upsample_bilinear(subsampled_prediction, output_height, output_width);
+
+  // cout << full_prediction << endl;
+
+
+   //namedWindow("Display Image", WINDOW_AUTOSIZE );
+   //waitKey(0);
 
   auto net = torch::resnet18(21,    /* pascal # of classes */
                              true,  /* fully convolutional model */
@@ -1472,40 +1520,63 @@ int main()
                              true); /* remove avg pool layer */   
 
 
-  net->load_weights("resnet18_fcn.h5");
+  net->load_weights("../resnet18_fcn.h5");
   net->cuda();
-  auto img = torch::load("vittal.h5")["main"].toBackend(Backend::CUDA);
-  auto img_batch_sizes = img.sizes();
-  int output_height = img_batch_sizes[2];
-  int output_width = img_batch_sizes[3];
+
+  VideoCapture cap(0); // open the default camera
+
+  if(!cap.isOpened())  // check if we succeeded
+      return -1;
+
+  Mat frame;
+  namedWindow("edges",1);
+  //for(;;)
+  //{ 
+
+      // Don't forget about the Blue Green Red channel order
+
+      Mat rgb_frame;
+      cap >> frame; // get a new frame from camera
+      
+      cvtColor(frame, rgb_frame, COLOR_BGR2RGB);
 
 
-  auto subsampled_prediction = net->forward(img);
+      //GaussianBlur(edges, edges, Size(7,7), 1.5, 1.5);
+      //Canny(edges, edges, 0, 30, 3);
+      imshow("edges", rgb_frame);
+    //  if(waitKey(30) >= 0) break;
+  //}
+  // the camera will be deinitialized automatically in VideoCapture destructor
+
+  // Outputs height x width x depth tensor converted from Opencv's Mat
+  auto input_tensor = torch::convert_opencv_mat_image_to_tensor(rgb_frame);
+
+  auto output_height = input_tensor.size(0);
+  auto output_width = input_tensor.size(1);
+
+  // Convert to float and reshape into a batch with dims 1 x depth x height x width
+  input_tensor = input_tensor.toType(CPU(kFloat))
+                             .transpose(0, 2)
+                             .transpose(1, 2);
+
+
+  // // To float and add a batch dimension
+  input_tensor = input_tensor.toType(CPU(kFloat)).unsqueeze(0) / 255;
+  
+  input_tensor = torch::normalize_batch_for_resnet(input_tensor);
+
+  auto input_tensor_gpu = input_tensor.toBackend(Backend::CUDA);
+
+  auto subsampled_prediction = net->forward(input_tensor_gpu);
   auto full_prediction = torch::upsample_bilinear(subsampled_prediction, output_height, output_width);
 
   cout << full_prediction << endl;
 
+  map<string, Tensor> dict;
 
-  // net->cuda();
+  dict["main"] = full_prediction.toBackend(Backend::CPU);
 
-  // auto tensor_cuda = vittal_dict["main"].toBackend(Backend::CUDA);
-
-  // auto result = net->forward(tensor_cuda);
-
-  // result = result.toBackend(Backend::CPU);
-
-  // Tensor values, index;
-
-  // std::tie(values, index) = max(result, 1, true);
-
-  // map<string, Tensor> dict_to_save;
-
-  // dict_to_save["main"] = index.toType(CPU(kFloat));
-
-  // torch::save("resi.h5", dict_to_save);
-
-  
-
+  torch::save("opencv.h5", dict);
   
   return 0;
 }

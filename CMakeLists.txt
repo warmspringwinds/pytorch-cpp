@@ -12,6 +12,8 @@ else()
 endif()
 
 find_package(CUDA 5.5)
+find_package( OpenCV REQUIRED )
+
 #find_package(HDF5 COMPONENTS C HL NO_MODULE REQUIRED static)
 
 include_directories(
@@ -58,7 +60,7 @@ ADD_EXECUTABLE(read_allocated_gpu_memory examples/read_allocated_gpu_memory.cpp)
 TARGET_LINK_LIBRARIES(read_allocated_gpu_memory ${ATen_BINARY_DIR}/src/ATen/libATen.so.1 ${CUDA_LIBRARIES})
 
 ADD_EXECUTABLE(sequential_test examples/sequential_test.cpp)
-TARGET_LINK_LIBRARIES(sequential_test ${ATen_BINARY_DIR}/src/ATen/libATen.so.1 ${CUDA_LIBRARIES} ${_hdf5_libs})
+TARGET_LINK_LIBRARIES(sequential_test ${ATen_BINARY_DIR}/src/ATen/libATen.so.1 ${CUDA_LIBRARIES} ${_hdf5_libs} ${OpenCV_LIBS})
 
 ADD_EXECUTABLE(read_hdf5_as_tensor examples/read_hdf5_as_tensor.cpp)
 TARGET_LINK_LIBRARIES(read_hdf5_as_tensor ${ATen_BINARY_DIR}/src/ATen/libATen.so.1 ${CUDA_LIBRARIES} ${_hdf5_libs})
