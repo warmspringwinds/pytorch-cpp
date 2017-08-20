@@ -267,7 +267,7 @@ namespace torch
             if(checkpoint_dict.count(name_tensor_pair.first) != 1)
             {
 
-              cout << "WARNING: model requires parameter ('" << name_tensor_pair.first << "'') "
+              cout << "WARNING: model requires parameter ('" << name_tensor_pair.first << "') "
                    << "which is not present in the checkpoint file. Using model's default.";
             }
           }
@@ -280,7 +280,7 @@ namespace torch
             if(model_state_dict.count(name_tensor_pair.first) != 1)
             {
 
-              cout << "WARNING: checkpoint file contains parameter ('" << name_tensor_pair.first << "'') "
+              cout << "WARNING: checkpoint file contains parameter ('" << name_tensor_pair.first << "') "
                    << "which is is not required by the model. The parameter is not used.";
             }
           }
@@ -1199,6 +1199,14 @@ namespace torch
                                                   output_stride ));
     }
 
+
+
+
+
+    
+
+
+
     Tensor preprocess_batch(Tensor input_batch)
     {
 
@@ -1459,6 +1467,55 @@ namespace torch
       return output_tensor;
     }
 
+
+
+
+
+
+    // maybe there should be some statement about fcn here no?
+
+    class Resnet18_8s : public Module
+    {
+
+      public:
+
+        int num_classes;
+        Module::Ptr resnet18_8s;
+        
+        Resnet18_8s(int num_classes=21):
+                    num_classes(num_classes)
+
+        {
+
+          resnet18_8s = torch::resnet18(num_classes,    
+                                        true,           /* fully convolutional model */
+                                        8,              /* we want subsampled by 8 prediction*/
+                                        true);          /* remove average pooling layer */
+
+          // Adding a module with this name to be able to easily load
+          // weights from pytorch models
+          add_module("resnet18_8s", resnet18_8s);
+
+        }
+
+        Tensor forward(Tensor input)
+        {
+
+          // probably we can add some utility functions to add softmax on top 
+          // resize the ouput in a proper way
+
+          // input is a tensor of shape batch_size x #channels x height x width
+          int output_height = input.size(2);
+          int output_width = input.size(3);
+
+          auto subsampled_prediction = resnet18_8s->forward(input);
+
+          auto full_prediction = upsample_bilinear(subsampled_prediction, output_height, output_width);
+
+          return full_prediction;
+        }
+    };
+
 }
 
 
@@ -1481,19 +1538,22 @@ int main()
 
   // -----
 
-  // first convert 34 also -- convert weights, run a test
+  // first convert 34 also -- convert weights, run a test (check)
 
-  // write wrappers for our fcns
+  // write wrappers for our fcns so that it would be easier to use
+  // and there will be no need to  ()
 
   // 
 
-  auto net = torch::resnet34(21,    /* pascal # of classes */
-                             true,  /* fully convolutional model */
-                             8,     /* we want subsampled by 8 prediction*/
-                             true); /* remove avg pool layer */   
+  // auto net = torch::resnet34(21,    /* pascal # of classes */
+  //                            true,  /* fully convolutional model */
+  //                            8,     /* we want subsampled by 8 prediction*/
+  //                            true); /* remove avg pool layer */   
 
 
-  net->load_weights("../resnet34_fcn.h5");
+  auto net = make_shared<torch::Resnet18_8s>(21);
+
+  net->load_weights("../resnet18_fcn_new.h5");
   net->cuda();
 
   VideoCapture cap(0); // open the default camera
@@ -1526,8 +1586,10 @@ int main()
 
     auto input_tensor_gpu = image_batch_normalized_tensor.toBackend(Backend::CUDA);
 
-    auto subsampled_prediction = net->forward(input_tensor_gpu);
-    auto full_prediction = torch::upsample_bilinear(subsampled_prediction, output_height, output_width);
+    // auto subsampled_prediction = net->forward(input_tensor_gpu);
+    // auto full_prediction = torch::upsample_bilinear(subsampled_prediction, output_height, output_width);
+
+     auto full_prediction = net->forward(input_tensor_gpu);
 
     // This is necessary to correctly apply softmax,
     // last dimension should represent logits
