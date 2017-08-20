@@ -1199,11 +1199,11 @@ namespace torch
                                                   output_stride ));
     }
 
-    Tensor normalize_batch_for_resnet(Tensor input_batch)
+    Tensor preprocess_batch(Tensor input_batch)
     {
 
-      // Normalization is usually done on CPU and then sent
-      // to GPU.
+      // Subtracts mean and divides by std.
+      // Important: image should be in a 0-1 range and not in 0-255
 
       // TODO: create a pull request to add broadcastable
       // operations
@@ -1427,6 +1427,7 @@ namespace torch
     Tensor convert_opencv_mat_image_to_tensor(Mat input_mat)
     {
 
+      // Returns Byte Tensor with 0-255 values and (height x width x 3) shape
       // TODO: 
       // (1) double-check if this kind of conversion will always work
       //     http://docs.opencv.org/3.1.0/d3/d63/classcv_1_1Mat.html in 'Detailed Description'
@@ -1464,19 +1465,7 @@ namespace torch
 int main()
 {
 
-  // visualize result in opencv and not in jupyter notebook
-
-  // Get the full web cam stream
-
-  // ----- go home
-
-  // Check full equvalence of the normalize_batch_for_resnet() function (check)
-
-  // Finish the frame grabber example and run for a considerable time to
-  // check for memory leaks
-
-  // Create an example with smooth segmentation with web cam
-
+ 
   // Structure the project in a better way
 
   // Add a correct linking to Opencv on the local machine
@@ -1488,23 +1477,6 @@ int main()
   // write the fcn wrapper
 
   // test the resnet-34
-
-
-  //--------------
-
- // Learn how to display transparancy -- display input frame with some random transparancy
-
- // Use the acquired values as a transparancy layer values
-
- // Write a function to convert back from Tensor to Mat
-
- // add softmax on top
-
-
-  // for now assume you have 0-1 values
-
-  // convert from Tensor to Mat back
-
 
   auto net = torch::resnet18(21,    /* pascal # of classes */
                              true,  /* fully convolutional model */
@@ -1521,27 +1493,27 @@ int main()
       return -1;
 
   Mat frame;
-  namedWindow("",1);
-
+  
   for(;;)
   { 
 
-      
     cap >> frame;
         
     // BGR to RGB which is what our networks was trained on
     cvtColor(frame, frame, COLOR_BGR2RGB);
       
     // Outputs height x width x 3 tensor converted from Opencv's Mat with 0-255 values
-    auto image_tensor = torch::convert_opencv_mat_image_to_tensor(frame).toType(CPU(kFloat));
+    // and convert to 0-1 range
+    auto image_tensor = torch::convert_opencv_mat_image_to_tensor(frame).toType(CPU(kFloat)) / 255;
 
     auto output_height = image_tensor.size(0);
     auto output_width = image_tensor.size(1);
 
+    // Reshape image into 1 x 3 x height x width
     auto image_batch_tensor = torch::convert_image_to_batch(image_tensor);
  
-    auto image_batch_normalized_tensor = torch::normalize_batch_for_resnet(image_batch_tensor / 255);
-
+    // Subtract the mean and divide by standart deivation
+    auto image_batch_normalized_tensor = torch::preprocess_batch(image_batch_tensor);
 
     auto input_tensor_gpu = image_batch_normalized_tensor.toBackend(Backend::CUDA);
 
@@ -1560,7 +1532,7 @@ int main()
 
 
     // Fuse the prediction probabilities and the actual image to form a masked image.
-    auto masked_image = ( (image_tensor / 255) * layer.expand({output_height, output_width, 3}) ) * 255 ;
+    auto masked_image = ( image_tensor  * layer.expand({output_height, output_width, 3}) ) * 255 ;
 
 
     // A function to convert Tensor to a Mat
@@ -1572,7 +1544,7 @@ int main()
     // OpenCV want BGR not RGB
     cvtColor(converted, converted, COLOR_RGB2BGR);
 
-    imshow("edges", converted);
+    imshow("Masked image", converted);
 
     if(waitKey(30) >= 0 ) break;
   }
