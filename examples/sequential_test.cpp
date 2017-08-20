@@ -281,7 +281,7 @@ namespace torch
             {
 
               cout << "WARNING: checkpoint file contains parameter ('" << name_tensor_pair.first << "') "
-                   << "which is is not required by the model. The parameter is not used." << endl;
+                   << "which is not required by the model. The parameter is not used." << endl;
             }
           }
 
@@ -1600,6 +1600,17 @@ int main()
 
 
   // -----
+
+  // * Should we convert the renset 50 and 101?
+  // * we don't have any segmentatin models trained using them
+  // * maybe only to make the framework more complete?
+
+  // * Structure the whole project
+  // * write docs on how to build it
+
+  // * Write the dataloaders for the surgical datasets
+
+  // * start the training
 
 
   auto net = torch::resnet18_8s_pascal_voc();
