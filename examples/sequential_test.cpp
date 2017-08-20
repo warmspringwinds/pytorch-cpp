@@ -1478,13 +1478,22 @@ int main()
 
   // test the resnet-34
 
-  auto net = torch::resnet18(21,    /* pascal # of classes */
+
+  // -----
+
+  // first convert 34 also -- convert weights, run a test
+
+  // write wrappers for our fcns
+
+  // 
+
+  auto net = torch::resnet34(21,    /* pascal # of classes */
                              true,  /* fully convolutional model */
                              8,     /* we want subsampled by 8 prediction*/
                              true); /* remove avg pool layer */   
 
 
-  net->load_weights("../resnet18_fcn.h5");
+  net->load_weights("../resnet34_fcn.h5");
   net->cuda();
 
   VideoCapture cap(0); // open the default camera
@@ -1528,6 +1537,8 @@ int main()
 
     auto softmaxed = torch::softmax(full_prediction_flattned).transpose(0, 1);
 
+
+    // 15 is a class for a person
     auto layer = softmaxed[15].contiguous().view({output_height, output_width, 1}).toBackend(Backend::CPU);
 
 
@@ -1539,7 +1550,6 @@ int main()
     auto layer_cpu = masked_image.toType(CPU(kByte));
 
     auto converted = Mat(output_height, output_width, CV_8UC3, layer_cpu.data_ptr());
-
 
     // OpenCV want BGR not RGB
     cvtColor(converted, converted, COLOR_RGB2BGR);
