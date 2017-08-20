@@ -1413,6 +1413,17 @@ namespace torch
       return output;
     }
 
+    Tensor softmax(Tensor input_tensor)
+    {
+
+      Tensor output = input_tensor.type().tensor();
+
+      SoftMax_updateOutput(input_tensor, output);
+
+      return output;
+
+    }
+
     Tensor convert_opencv_mat_image_to_tensor(Mat input_mat)
     {
 
@@ -1472,6 +1483,14 @@ int main()
 
  // Write a function to convert back from Tensor to Mat
 
+ // add softmax on top
+
+
+  // for now assume you have 0-1 values
+
+  // convert from Tensor to Mat back
+
+
   auto net = torch::resnet18(21,    /* pascal # of classes */
                              true,  /* fully convolutional model */
                              8,     /* we want subsampled by 8 prediction*/
@@ -1488,8 +1507,8 @@ int main()
 
   Mat frame;
   namedWindow("edges",1);
-  //for(;;)
-  //{ 
+  for(;;)
+  { 
 
       // Don't forget about the Blue Green Red channel order
       cap >> frame; // get a new frame from camera
@@ -1500,7 +1519,7 @@ int main()
 
       //GaussianBlur(edges, edges, Size(7,7), 1.5, 1.5);
       //Canny(edges, edges, 0, 30, 3);
-      imshow("edges", frame);
+      //imshow("edges", frame);
     //  if(waitKey(30) >= 0) break;
   //}
   // the camera will be deinitialized automatically in VideoCapture destructor
@@ -1508,21 +1527,9 @@ int main()
   // Outputs height x width x depth tensor converted from Opencv's Mat
   auto input_tensor = torch::convert_opencv_mat_image_to_tensor(frame);
 
+  // write a function to convert image to the batch
 
-  auto di = torch::load("frame.h5");
-
-  input_tensor = di["main"];
-
-  // save image, run inference here and 
-
-  // save it without forming a batch
-
-
-
-  //cout << input_tensor << endl;
-
-
-
+  // * Starts here -------------------
 
   auto output_height = input_tensor.size(0);
   auto output_width = input_tensor.size(1);
@@ -1538,21 +1545,39 @@ int main()
   
   input_tensor = torch::normalize_batch_for_resnet(input_tensor);
 
+  // * Ends here ---------------
+
   auto input_tensor_gpu = input_tensor.toBackend(Backend::CUDA);
 
   auto subsampled_prediction = net->forward(input_tensor_gpu);
   auto full_prediction = torch::upsample_bilinear(subsampled_prediction, output_height, output_width);
 
-  cout << full_prediction << endl;
+  auto full_prediction_flattned = full_prediction.squeeze(0)
+                                                 .view({21, -1})
+                                                 .transpose(0, 1);
+
+  //auto full_prediction_flattned = full_prediction.view({1, 21, -1});
+
+  cout << full_prediction_flattned.sizes() << endl;
+
+  auto softmaxed = torch::softmax(full_prediction_flattned).transpose(0, 1);
+
+  auto layer = softmaxed[15].contiguous().view({output_height, output_width}) * 255;
 
 
+  // A function to convert Tensor to a Mat
 
+  auto layer_cpu = layer.contiguous().toType(CPU(kByte));
 
-  map<string, Tensor> dict;
+  auto converted = Mat(output_height, output_width, CV_8UC1, layer_cpu.data_ptr());
 
-  dict["main"] = full_prediction.toType(CPU(kFloat));
+  // Ends here
 
-  torch::save("pred.h5", dict);
+  imshow("edges", converted);
+
+  if(waitKey(30) >= 0) break;
+  }
+
   
   return 0;
 }
