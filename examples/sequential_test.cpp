@@ -1527,6 +1527,8 @@ int main()
   // Outputs height x width x depth tensor converted from Opencv's Mat
   auto input_tensor = torch::convert_opencv_mat_image_to_tensor(frame);
 
+  auto input_tensor_part = (input_tensor.toType(CPU(kFloat)) / 255);
+
   // write a function to convert image to the batch
 
   // * Starts here -------------------
@@ -1562,16 +1564,20 @@ int main()
 
   auto softmaxed = torch::softmax(full_prediction_flattned).transpose(0, 1);
 
-  auto layer = softmaxed[15].contiguous().view({output_height, output_width}) * 255;
+  auto layer = softmaxed[15].contiguous().view({output_height, output_width, 1}).toBackend(Backend::CPU);
+
+  input_tensor_part = ( input_tensor_part * layer.expand({output_height, output_width, 3}) ) * 255 ;
 
 
   // A function to convert Tensor to a Mat
 
-  auto layer_cpu = layer.contiguous().toType(CPU(kByte));
+  auto layer_cpu = input_tensor_part.contiguous().toType(CPU(kByte));
 
-  auto converted = Mat(output_height, output_width, CV_8UC1, layer_cpu.data_ptr());
+  auto converted = Mat(output_height, output_width, CV_8UC3, layer_cpu.data_ptr());
 
-  // Ends here
+
+  // OpenCV want BGR not RGB
+  cvtColor(converted, converted, COLOR_RGB2BGR);
 
   imshow("edges", converted);
 
