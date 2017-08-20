@@ -1556,6 +1556,30 @@ namespace torch
                                                   output_stride ));
     }
 
+    // Maybe add new options like add_softmax?,
+    Module::Ptr resnet18_imagenet()
+    {
+
+      return resnet18(1000, false, 32, false);
+    }
+
+    Module::Ptr resnet34_imagenet()
+    {
+
+      return resnet34(1000, false, 32, false);
+    }
+
+    Module::Ptr resnet18_8s_pascal_voc()
+    {
+
+      return make_shared<torch::Resnet18_8s>(21);
+    }
+
+    Module::Ptr resnet34_8s_pascal_voc()
+    {
+
+      return make_shared<torch::Resnet34_8s>(21);
+    }
 
 
 
@@ -1574,29 +1598,13 @@ int main()
 
   // upload all the transferred models
 
-  // write the fcn wrapper
-
-  // test the resnet-34
-
 
   // -----
 
-  // first convert 34 also -- convert weights, run a test (check)
 
-  // write wrappers for our fcns so that it would be easier to use
-  // and there will be no need to  (check)
-  // write separate function like resnet_34_imagenet resnet_34_8s_pascal_voc and so on ()
+  auto net = torch::resnet18_8s_pascal_voc();
 
-
-  // auto net = torch::resnet34(21,    /* pascal # of classes */
-  //                            true,  /* fully convolutional model */
-  //                            8,     /* we want subsampled by 8 prediction*/
-  //                            true); /* remove avg pool layer */   
-
-
-  auto net = make_shared<torch::Resnet34_8s>(21);
-
-  net->load_weights("../resnet34_fcn_new.h5");
+  net->load_weights("../resnet18_fcn_new.h5");
   net->cuda();
 
   VideoCapture cap(0); // open the default camera
@@ -1611,7 +1619,7 @@ int main()
 
     cap >> frame;
         
-    // BGR to RGB which is what our networks was trained on
+    // BGR to RGB which is what our network was trained on
     cvtColor(frame, frame, COLOR_BGR2RGB);
       
     // Outputs height x width x 3 tensor converted from Opencv's Mat with 0-255 values
@@ -1623,16 +1631,13 @@ int main()
 
     // Reshape image into 1 x 3 x height x width
     auto image_batch_tensor = torch::convert_image_to_batch(image_tensor);
- 
+
     // Subtract the mean and divide by standart deivation
     auto image_batch_normalized_tensor = torch::preprocess_batch(image_batch_tensor);
 
     auto input_tensor_gpu = image_batch_normalized_tensor.toBackend(Backend::CUDA);
 
-    // auto subsampled_prediction = net->forward(input_tensor_gpu);
-    // auto full_prediction = torch::upsample_bilinear(subsampled_prediction, output_height, output_width);
-
-     auto full_prediction = net->forward(input_tensor_gpu);
+    auto full_prediction = net->forward(input_tensor_gpu);
 
     // This is necessary to correctly apply softmax,
     // last dimension should represent logits
@@ -1640,16 +1645,14 @@ int main()
                                                    .view({21, -1})
                                                    .transpose(0, 1);
 
+    // Converting logits to probabilities                                               
     auto softmaxed = torch::softmax(full_prediction_flattned).transpose(0, 1);
-
 
     // 15 is a class for a person
     auto layer = softmaxed[15].contiguous().view({output_height, output_width, 1}).toBackend(Backend::CPU);
 
-
     // Fuse the prediction probabilities and the actual image to form a masked image.
     auto masked_image = ( image_tensor  * layer.expand({output_height, output_width, 3}) ) * 255 ;
-
 
     // A function to convert Tensor to a Mat
     auto layer_cpu = masked_image.toType(CPU(kByte));
