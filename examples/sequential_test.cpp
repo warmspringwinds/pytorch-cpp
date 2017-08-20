@@ -1443,6 +1443,21 @@ namespace torch
 
     }
 
+    Tensor convert_image_to_batch(Tensor input_img)
+    {
+
+      // Converts height x width x depth Tensor to
+      // 1 x depth x height x width Float Tensor
+
+      // It's necessary because network accepts only batches
+
+      auto output_tensor =  input_img.transpose(0, 2)
+                                     .transpose(1, 2)
+                                     .unsqueeze(0);
+
+      return output_tensor;
+    }
+
 }
 
 
@@ -1506,82 +1521,60 @@ int main()
       return -1;
 
   Mat frame;
-  namedWindow("edges",1);
+  namedWindow("",1);
+
   for(;;)
   { 
 
-      // Don't forget about the Blue Green Red channel order
-      cap >> frame; // get a new frame from camera
       
-      // BGR to RGB which is what our networks was trained on
-      cvtColor(frame, frame, COLOR_BGR2RGB);
+    cap >> frame;
+        
+    // BGR to RGB which is what our networks was trained on
+    cvtColor(frame, frame, COLOR_BGR2RGB);
+      
+    // Outputs height x width x 3 tensor converted from Opencv's Mat with 0-255 values
+    auto image_tensor = torch::convert_opencv_mat_image_to_tensor(frame).toType(CPU(kFloat));
+
+    auto output_height = image_tensor.size(0);
+    auto output_width = image_tensor.size(1);
+
+    auto image_batch_tensor = torch::convert_image_to_batch(image_tensor);
+ 
+    auto image_batch_normalized_tensor = torch::normalize_batch_for_resnet(image_batch_tensor / 255);
 
 
-      //GaussianBlur(edges, edges, Size(7,7), 1.5, 1.5);
-      //Canny(edges, edges, 0, 30, 3);
-      //imshow("edges", frame);
-    //  if(waitKey(30) >= 0) break;
-  //}
-  // the camera will be deinitialized automatically in VideoCapture destructor
+    auto input_tensor_gpu = image_batch_normalized_tensor.toBackend(Backend::CUDA);
 
-  // Outputs height x width x depth tensor converted from Opencv's Mat
-  auto input_tensor = torch::convert_opencv_mat_image_to_tensor(frame);
+    auto subsampled_prediction = net->forward(input_tensor_gpu);
+    auto full_prediction = torch::upsample_bilinear(subsampled_prediction, output_height, output_width);
 
-  auto input_tensor_part = (input_tensor.toType(CPU(kFloat)) / 255);
+    // This is necessary to correctly apply softmax,
+    // last dimension should represent logits
+    auto full_prediction_flattned = full_prediction.squeeze(0)
+                                                   .view({21, -1})
+                                                   .transpose(0, 1);
 
-  // write a function to convert image to the batch
+    auto softmaxed = torch::softmax(full_prediction_flattned).transpose(0, 1);
 
-  // * Starts here -------------------
-
-  auto output_height = input_tensor.size(0);
-  auto output_width = input_tensor.size(1);
-
-  // Convert to float and reshape into a batch with dims 1 x depth x height x width
-  input_tensor = input_tensor.toType(CPU(kFloat))
-                             .transpose(0, 2)
-                             .transpose(1, 2);
+    auto layer = softmaxed[15].contiguous().view({output_height, output_width, 1}).toBackend(Backend::CPU);
 
 
-  // // To float and add a batch dimension
-  input_tensor = input_tensor.toType(CPU(kFloat)).unsqueeze(0) / 255;
-  
-  input_tensor = torch::normalize_batch_for_resnet(input_tensor);
-
-  // * Ends here ---------------
-
-  auto input_tensor_gpu = input_tensor.toBackend(Backend::CUDA);
-
-  auto subsampled_prediction = net->forward(input_tensor_gpu);
-  auto full_prediction = torch::upsample_bilinear(subsampled_prediction, output_height, output_width);
-
-  auto full_prediction_flattned = full_prediction.squeeze(0)
-                                                 .view({21, -1})
-                                                 .transpose(0, 1);
-
-  //auto full_prediction_flattned = full_prediction.view({1, 21, -1});
-
-  cout << full_prediction_flattned.sizes() << endl;
-
-  auto softmaxed = torch::softmax(full_prediction_flattned).transpose(0, 1);
-
-  auto layer = softmaxed[15].contiguous().view({output_height, output_width, 1}).toBackend(Backend::CPU);
-
-  input_tensor_part = ( input_tensor_part * layer.expand({output_height, output_width, 3}) ) * 255 ;
+    // Fuse the prediction probabilities and the actual image to form a masked image.
+    auto masked_image = ( (image_tensor / 255) * layer.expand({output_height, output_width, 3}) ) * 255 ;
 
 
-  // A function to convert Tensor to a Mat
+    // A function to convert Tensor to a Mat
+    auto layer_cpu = masked_image.toType(CPU(kByte));
 
-  auto layer_cpu = input_tensor_part.contiguous().toType(CPU(kByte));
-
-  auto converted = Mat(output_height, output_width, CV_8UC3, layer_cpu.data_ptr());
+    auto converted = Mat(output_height, output_width, CV_8UC3, layer_cpu.data_ptr());
 
 
-  // OpenCV want BGR not RGB
-  cvtColor(converted, converted, COLOR_RGB2BGR);
+    // OpenCV want BGR not RGB
+    cvtColor(converted, converted, COLOR_RGB2BGR);
 
-  imshow("edges", converted);
+    imshow("edges", converted);
 
-  if(waitKey(30) >= 0) break;
+    if(waitKey(30) >= 0 ) break;
   }
 
   
