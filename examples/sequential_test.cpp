@@ -268,7 +268,7 @@ namespace torch
             {
 
               cout << "WARNING: model requires parameter ('" << name_tensor_pair.first << "') "
-                   << "which is not present in the checkpoint file. Using model's default.";
+                   << "which is not present in the checkpoint file. Using model's default." << endl;
             }
           }
 
@@ -281,7 +281,7 @@ namespace torch
             {
 
               cout << "WARNING: checkpoint file contains parameter ('" << name_tensor_pair.first << "') "
-                   << "which is is not required by the model. The parameter is not used.";
+                   << "which is is not required by the model. The parameter is not used." << endl;
             }
           }
 
@@ -1175,37 +1175,6 @@ namespace torch
 
     };
 
-    
-    Module::Ptr resnet18(int num_classes=1000, bool fully_conv=false, int output_stride=32, bool remove_avg_pool=false)
-    {
-
-      return std::shared_ptr<torch::ResNet<torch::BasicBlock>>(
-             new torch::ResNet<torch::BasicBlock>({2, 2, 2, 2},
-                                                  num_classes,
-                                                  fully_conv,
-                                                  remove_avg_pool,
-                                                  output_stride ));
-    }
-
-
-    Module::Ptr resnet34(int num_classes=1000, bool fully_conv=false, int output_stride=32, bool remove_avg_pool=false)
-    {
-
-      return std::shared_ptr<torch::ResNet<torch::BasicBlock>>(
-             new torch::ResNet<torch::BasicBlock>({3, 4, 6, 3},
-                                                  num_classes,
-                                                  fully_conv,
-                                                  remove_avg_pool,
-                                                  output_stride ));
-    }
-
-
-
-
-
-    
-
-
 
     Tensor preprocess_batch(Tensor input_batch)
     {
@@ -1467,12 +1436,12 @@ namespace torch
       return output_tensor;
     }
 
+    Module::Ptr resnet18(int num_classes, bool fully_conv, int output_stride, bool remove_avg_pool);
+    Module::Ptr resnet34(int num_classes, bool fully_conv, int output_stride, bool remove_avg_pool);
 
 
-
-
-
-    // maybe there should be some statement about fcn here no?
+    // This one is just to build architecture, we can create functions to actually load
+    // pretrained models like in pytorch
 
     class Resnet18_8s : public Module
     {
@@ -1516,6 +1485,80 @@ namespace torch
         }
     };
 
+
+    class Resnet34_8s : public Module
+    {
+
+      public:
+
+        int num_classes;
+        Module::Ptr resnet34_8s;
+        
+        Resnet34_8s(int num_classes=21):
+                    num_classes(num_classes)
+
+        {
+
+          resnet34_8s = torch::resnet34(num_classes,    
+                                        true,           /* fully convolutional model */
+                                        8,              /* we want subsampled by 8 prediction*/
+                                        true);          /* remove average pooling layer */
+
+          // Adding a module with this name to be able to easily load
+          // weights from pytorch models
+          add_module("resnet34_8s", resnet34_8s);
+
+        }
+
+        Tensor forward(Tensor input)
+        {
+
+          // TODO:
+
+          // (1) This part with upsampling is the same for all fully conv models
+          //     Might make sense to write an abstract class to avoid duplication
+          // (2) Probably we can add some utility functions to add softmax on top 
+          //      resize the ouput in a proper way
+
+          // input is a tensor of shape batch_size x #channels x height x width
+          int output_height = input.size(2);
+          int output_width = input.size(3);
+
+          auto subsampled_prediction = resnet34_8s->forward(input);
+
+          auto full_prediction = upsample_bilinear(subsampled_prediction, output_height, output_width);
+
+          return full_prediction;
+        }
+    };
+
+
+    Module::Ptr resnet18(int num_classes=1000, bool fully_conv=false, int output_stride=32, bool remove_avg_pool=false)
+    {
+
+      return std::shared_ptr<torch::ResNet<torch::BasicBlock>>(
+             new torch::ResNet<torch::BasicBlock>({2, 2, 2, 2},
+                                                  num_classes,
+                                                  fully_conv,
+                                                  remove_avg_pool,
+                                                  output_stride ));
+    }
+
+
+    Module::Ptr resnet34(int num_classes=1000, bool fully_conv=false, int output_stride=32, bool remove_avg_pool=false)
+    {
+
+      return std::shared_ptr<torch::ResNet<torch::BasicBlock>>(
+             new torch::ResNet<torch::BasicBlock>({3, 4, 6, 3},
+                                                  num_classes,
+                                                  fully_conv,
+                                                  remove_avg_pool,
+                                                  output_stride ));
+    }
+
+
+
+
 }
 
 
@@ -1541,9 +1584,9 @@ int main()
   // first convert 34 also -- convert weights, run a test (check)
 
   // write wrappers for our fcns so that it would be easier to use
-  // and there will be no need to  ()
+  // and there will be no need to  (check)
+  // write separate function like resnet_34_imagenet resnet_34_8s_pascal_voc and so on ()
 
-  // 
 
   // auto net = torch::resnet34(21,    /* pascal # of classes */
   //                            true,  /* fully convolutional model */
@@ -1551,9 +1594,9 @@ int main()
   //                            true); /* remove avg pool layer */   
 
 
-  auto net = make_shared<torch::Resnet18_8s>(21);
+  auto net = make_shared<torch::Resnet34_8s>(21);
 
-  net->load_weights("../resnet18_fcn_new.h5");
+  net->load_weights("../resnet34_fcn_new.h5");
   net->cuda();
 
   VideoCapture cap(0); // open the default camera
