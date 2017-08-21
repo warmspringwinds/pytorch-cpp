@@ -1,7 +1,3 @@
-/*
-Example shows how to define an architecture, visualize it later on
-using std tools, and get a forward pass from that model.
-*/
 
 #include "ATen/ATen.h"
 #include "ATen/Type.h"
