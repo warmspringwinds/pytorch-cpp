@@ -660,6 +660,17 @@ namespace torch
                                  false); /* bias */
     }
 
+    Module::Ptr renset_conv1x1(int in_planes, int planes)
+    {
+
+      return std::make_shared<Conv2d>(in_planes, planes,
+                                      1, 1,
+                                      1, 1,
+                                      0, 0,
+                                      1, 1,
+                                      1, false);
+    }
+
 
     class MaxPool2d : public Module
     {
@@ -972,6 +983,100 @@ namespace torch
     };
 
 
+    class Bottleneck : public Module
+    {
+
+      public:
+
+        static const int expansion = 4;
+
+        // done
+        int stride;
+        Module::Ptr conv1;
+        Module::Ptr bn1;
+        Module::Ptr relu;
+        Module::Ptr conv2;
+        Module::Ptr bn2;
+        Module::Ptr conv3;
+        Module::Ptr bn3;
+        Module::Ptr downsample;
+
+
+        // Make a standart value
+        Bottleneck(int inplanes, int planes, int stride=1, int dilation=1, Module::Ptr downsample=nullptr)
+        {
+
+          conv1 = renset_conv1x1(inplanes, planes);
+          bn1 = std::make_shared<BatchNorm2d>(planes);
+          relu = std::make_shared<ReLU>();
+          
+          conv2 = conv3x3(planes, planes, stride, dilation);
+          bn2 = std::make_shared<BatchNorm2d>(planes);
+
+          conv3 = renset_conv1x1(inplanes, planes * Bottleneck::expansion);
+          bn3 = std::make_shared<BatchNorm2d>(planes * Bottleneck::expansion);
+
+          // Avoiding ambiguitiy -- this is why we are using 'this' keyword.
+          this->downsample = downsample;
+
+          stride = stride;
+
+          add_module("conv1", conv1);
+          add_module("bn1", bn1);
+          add_module("conv2", conv2);
+          add_module("bn2", bn2);
+          add_module("conv3", conv3);
+          add_module("bn3", bn3);
+          
+
+          if( downsample != nullptr )
+          {
+
+            add_module("downsample", downsample);
+          }
+
+          module_name = "Bottleneck";
+
+        };
+
+        ~Bottleneck() {};
+
+        // done
+        Tensor forward(Tensor input)
+        {
+
+          // This is done in case we don't have the
+          // downsample module
+          Tensor residual = input;
+          Tensor out;
+
+          out = conv1->forward(input);
+          out = bn1->forward(out);
+          out = relu->forward(out);
+          
+          out = conv2->forward(out);
+          out = bn2->forward(out);
+          out = relu->forward(out);
+
+          out = conv3->forward(out);
+          out = bn3->forward(out);
+
+
+          if(downsample != nullptr)
+          {
+        
+            residual = downsample->forward(input);
+          }
+
+          out += residual;
+          out = relu->forward(out);
+
+          return out;
+        }
+    };
+
+
+  
     template <class BlockType>
     class ResNet : public Module
     {
@@ -1556,6 +1661,17 @@ namespace torch
                                                   output_stride ));
     }
 
+    Module::Ptr resnet50(int num_classes=1000, bool fully_conv=false, int output_stride=32, bool remove_avg_pool=false)
+    {
+
+      return std::shared_ptr<torch::ResNet<torch::Bottleneck>>(
+             new torch::ResNet<torch::Bottleneck>({3, 4, 6, 3},
+                                                  num_classes,
+                                                  fully_conv,
+                                                  remove_avg_pool,
+                                                  output_stride ));
+    }
+
     // Maybe add new options like add_softmax?,
     Module::Ptr resnet18_imagenet()
     {
@@ -1567,6 +1683,12 @@ namespace torch
     {
 
       return resnet34(1000, false, 32, false);
+    }
+
+    Module::Ptr resnet50_imagenet()
+    {
+
+      return resnet50(1000, false, 32, false);
     }
 
     Module::Ptr resnet18_8s_pascal_voc()
@@ -1607,76 +1729,87 @@ int main()
 
   // * Structure the whole project
   // * write docs on how to build it
+  // * write missing parts -- good for future contributions
 
   // * Write the dataloaders for the surgical datasets
 
   // * start the training
 
 
-  auto net = torch::resnet18_8s_pascal_voc();
+  auto net = torch::resnet50_imagenet();
 
-  net->load_weights("../resnet18_fcn_new.h5");
+  net->load_weights("../resnet50_imagenet.h5");
   net->cuda();
 
-  VideoCapture cap(0); // open the default camera
+  Tensor dummy_input = CUDA(kFloat).ones({1, 3, 224, 224});
 
-  if(!cap.isOpened())  // check if we succeeded
-      return -1;
+  auto result = net->forward(dummy_input);
 
-  Mat frame;
+  map<string, Tensor> dict;
+
+  dict["main"] = result.toBackend(Backend::CPU);
+
+  torch::save("resnet50_output.h5", dict);
+
+  // VideoCapture cap(0); // open the default camera
+
+  // if(!cap.isOpened())  // check if we succeeded
+  //     return -1;
+
+  // Mat frame;
   
-  for(;;)
-  { 
+  // for(;;)
+  // { 
 
-    cap >> frame;
+  //   cap >> frame;
         
-    // BGR to RGB which is what our network was trained on
-    cvtColor(frame, frame, COLOR_BGR2RGB);
+  //   // BGR to RGB which is what our network was trained on
+  //   cvtColor(frame, frame, COLOR_BGR2RGB);
       
-    // Outputs height x width x 3 tensor converted from Opencv's Mat with 0-255 values
-    // and convert to 0-1 range
-    auto image_tensor = torch::convert_opencv_mat_image_to_tensor(frame).toType(CPU(kFloat)) / 255;
+  //   // Outputs height x width x 3 tensor converted from Opencv's Mat with 0-255 values
+  //   // and convert to 0-1 range
+  //   auto image_tensor = torch::convert_opencv_mat_image_to_tensor(frame).toType(CPU(kFloat)) / 255;
 
-    auto output_height = image_tensor.size(0);
-    auto output_width = image_tensor.size(1);
+  //   auto output_height = image_tensor.size(0);
+  //   auto output_width = image_tensor.size(1);
 
-    // Reshape image into 1 x 3 x height x width
-    auto image_batch_tensor = torch::convert_image_to_batch(image_tensor);
+  //   // Reshape image into 1 x 3 x height x width
+  //   auto image_batch_tensor = torch::convert_image_to_batch(image_tensor);
 
-    // Subtract the mean and divide by standart deivation
-    auto image_batch_normalized_tensor = torch::preprocess_batch(image_batch_tensor);
+  //   // Subtract the mean and divide by standart deivation
+  //   auto image_batch_normalized_tensor = torch::preprocess_batch(image_batch_tensor);
 
-    auto input_tensor_gpu = image_batch_normalized_tensor.toBackend(Backend::CUDA);
+  //   auto input_tensor_gpu = image_batch_normalized_tensor.toBackend(Backend::CUDA);
 
-    auto full_prediction = net->forward(input_tensor_gpu);
+  //   auto full_prediction = net->forward(input_tensor_gpu);
 
-    // This is necessary to correctly apply softmax,
-    // last dimension should represent logits
-    auto full_prediction_flattned = full_prediction.squeeze(0)
-                                                   .view({21, -1})
-                                                   .transpose(0, 1);
+  //   // This is necessary to correctly apply softmax,
+  //   // last dimension should represent logits
+  //   auto full_prediction_flattned = full_prediction.squeeze(0)
+  //                                                  .view({21, -1})
+  //                                                  .transpose(0, 1);
 
-    // Converting logits to probabilities                                               
-    auto softmaxed = torch::softmax(full_prediction_flattned).transpose(0, 1);
+  //   // Converting logits to probabilities                                               
+  //   auto softmaxed = torch::softmax(full_prediction_flattned).transpose(0, 1);
 
-    // 15 is a class for a person
-    auto layer = softmaxed[15].contiguous().view({output_height, output_width, 1}).toBackend(Backend::CPU);
+  //   // 15 is a class for a person
+  //   auto layer = softmaxed[15].contiguous().view({output_height, output_width, 1}).toBackend(Backend::CPU);
 
-    // Fuse the prediction probabilities and the actual image to form a masked image.
-    auto masked_image = ( image_tensor  * layer.expand({output_height, output_width, 3}) ) * 255 ;
+  //   // Fuse the prediction probabilities and the actual image to form a masked image.
+  //   auto masked_image = ( image_tensor  * layer.expand({output_height, output_width, 3}) ) * 255 ;
 
-    // A function to convert Tensor to a Mat
-    auto layer_cpu = masked_image.toType(CPU(kByte));
+  //   // A function to convert Tensor to a Mat
+  //   auto layer_cpu = masked_image.toType(CPU(kByte));
 
-    auto converted = Mat(output_height, output_width, CV_8UC3, layer_cpu.data_ptr());
+  //   auto converted = Mat(output_height, output_width, CV_8UC3, layer_cpu.data_ptr());
 
-    // OpenCV want BGR not RGB
-    cvtColor(converted, converted, COLOR_RGB2BGR);
+  //   // OpenCV want BGR not RGB
+  //   cvtColor(converted, converted, COLOR_RGB2BGR);
 
-    imshow("Masked image", converted);
+  //   imshow("Masked image", converted);
 
-    if(waitKey(30) >= 0 ) break;
-  }
+  //   if(waitKey(30) >= 0 ) break;
+  // }
 
   
   return 0;
