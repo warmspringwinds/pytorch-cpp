@@ -55,15 +55,19 @@ ${CMAKE_CURRENT_SOURCE_DIR}/CMake-hdf5-1.8.19/build/bin/libszip.a
 -ldl
 )
 
+# TODO: structure project in a better way
+# Temporary solution -- change to a normal cpp project structure later
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
+
 
 ADD_EXECUTABLE(read_allocated_gpu_memory examples/read_allocated_gpu_memory.cpp)
 TARGET_LINK_LIBRARIES(read_allocated_gpu_memory ${ATen_BINARY_DIR}/src/ATen/libATen.so.1 ${CUDA_LIBRARIES})
 
-ADD_EXECUTABLE(sequential_test examples/sequential_test.cpp)
-TARGET_LINK_LIBRARIES(sequential_test ${ATen_BINARY_DIR}/src/ATen/libATen.so.1 ${CUDA_LIBRARIES} ${_hdf5_libs} ${OpenCV_LIBS})
+ADD_EXECUTABLE(opencv_realtime_webcam_human_segmentation examples/opencv_realtime_webcam_human_segmentation.cpp)
+TARGET_LINK_LIBRARIES(opencv_realtime_webcam_human_segmentation ${ATen_BINARY_DIR}/src/ATen/libATen.so.1 ${CUDA_LIBRARIES} ${_hdf5_libs} ${OpenCV_LIBS})
 
-ADD_EXECUTABLE(read_hdf5_as_tensor examples/read_hdf5_as_tensor.cpp)
-TARGET_LINK_LIBRARIES(read_hdf5_as_tensor ${ATen_BINARY_DIR}/src/ATen/libATen.so.1 ${CUDA_LIBRARIES} ${_hdf5_libs})
+ADD_EXECUTABLE(pytorch_results_deviation examples/pytorch_results_deviation.cpp)
+TARGET_LINK_LIBRARIES(pytorch_results_deviation ${ATen_BINARY_DIR}/src/ATen/libATen.so.1 ${CUDA_LIBRARIES} ${_hdf5_libs})
 
 
 #add_subdirectory(examples)
