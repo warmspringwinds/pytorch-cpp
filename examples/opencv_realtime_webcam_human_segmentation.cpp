@@ -41,13 +41,13 @@ int main()
 
   // * Make the classification demo?
   // * need to put a softmax on top -- should be very easy
-  // * need a dict with number --> class name mapping
+  // * need a dict with number --> class name mapping (now)
 
-  // * Structure the whole project (now)
+  // * Structure the whole project (check)
   // * write docs on how to build it
   // * write missing parts -- good for future contributions
 
-  // * Write the dataloaders for the surgical datasets
+  // * Write the dataloaders for the new surgical datasets
 
   // * start the training
 
@@ -109,7 +109,7 @@ int main()
 
     auto converted = Mat(output_height, output_width, CV_8UC3, layer_cpu.data_ptr());
 
-    // OpenCV want BGR not RGB
+    // OpenCV wants BGR not RGB
     cvtColor(converted, converted, COLOR_RGB2BGR);
 
     imshow("Masked image", converted);

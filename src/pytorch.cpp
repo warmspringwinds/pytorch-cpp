@@ -1491,6 +1491,48 @@ namespace torch
       return output;
     }
 
+    Tensor downsample_average(Tensor input_tensor, int downsample_factor)
+    {
+
+      // Temporary solution for downsampling:
+      // https://discuss.pytorch.org/t/how-to-simpler-downsample-an-image-tensor-with-bicubic/1296/2
+
+      // Helper functions
+      // http://nbviewer.jupyter.org/gist/tnarihi/54744612d35776f53278
+      auto get_kernel_size = [](int factor) 
+      { 
+
+        return 2 * factor - factor % 2;
+      };
+
+      auto get_pading_size = [](int factor) 
+      { 
+
+        return int(ceil((factor - 1) / 2.));
+      };
+
+      Tensor output = input_tensor.type().tensor();
+
+      int kernel_size = get_kernel_size(downsample_factor);
+      int padding = get_pading_size(downsample_factor);
+
+      cout << "kernel size: " << kernel_size << ", padding: " << padding << endl; 
+
+
+      SpatialAveragePooling_updateOutput(input_tensor,
+                                         output,
+                                         kernel_size,
+                                         kernel_size,
+                                         downsample_factor,
+                                         downsample_factor,
+                                         padding,
+                                         padding,
+                                         false,
+                                         true);
+
+      return output;
+    }
+
     Tensor softmax(Tensor input_tensor)
     {
 
@@ -1694,7 +1736,6 @@ namespace torch
                                                   remove_avg_pool,
                                                   output_stride ));
     }
-
 
 
     // Maybe add new options like add_softmax?,
