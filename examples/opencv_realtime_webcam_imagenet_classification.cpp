@@ -20,6 +20,48 @@ using std::tie;
 
 using namespace cv;
 
+Mat resize_and_center_square_crop(Mat input_image, int square_size=224)
+{
+
+  // Resize image so that the smallest side == square_size
+  // and do a center crop along the biggest side.
+  // This way we preserve the aspect ratio and prepare the image
+  // for network.
+  
+  int width = input_image.cols,
+      height = input_image.rows;
+
+  int min_dim = ( width >= height ) ? height : width;
+  float scale = ( ( float ) square_size ) / min_dim;
+
+  resize(input_image, input_image, Size(0, 0), scale, scale, INTER_LINEAR);
+
+  Rect roi;
+
+  if ( height >= width )
+  {
+      roi.width = square_size;
+      roi.x = 0;
+
+      roi.height = square_size;
+      roi.y = ( input_image.rows - roi.height ) / 2;
+  }
+  else
+  {
+      roi.y = 0;
+      roi.height = square_size;
+
+
+      roi.width = square_size;
+      roi.x = ( input_image.cols - roi.width ) / 2;
+  }
+
+  Mat square_crop = input_image(roi);
+
+  return square_crop;
+}
+
+
 int main()
 {
 
@@ -36,6 +78,7 @@ int main()
 
   Mat frame;
   Mat resized_img;
+  Mat tmp;
   
   for(;;)
   { 
@@ -43,12 +86,14 @@ int main()
     cap.read(frame);
 
     // BGR to RGB which is what our network was trained on
-    cvtColor(frame, resized_img, COLOR_BGR2RGB);
+    cvtColor(frame, tmp, COLOR_BGR2RGB);
 
-    // Should be resized while preserving an aspect ratio -- we didn't do it here
-    // consider doing that to improve results
-    resize(frame, resized_img, Size(224, 224));
-      
+    // Be carefull: convert_opencv_mat_image_to_tensor() sometimes fails because
+    // of different management of underlaying image representation, this is why we
+    // do .clone()
+    // TODO: investigate it further
+    resized_img = resize_and_center_square_crop(tmp).clone();
+
     // Outputs height x width x 3 tensor converted from Opencv's Mat with 0-255 values
     // and convert to 0-1 range
     auto image_tensor = torch::convert_opencv_mat_image_to_tensor(resized_img).toType(CPU(kFloat)) / 255;
