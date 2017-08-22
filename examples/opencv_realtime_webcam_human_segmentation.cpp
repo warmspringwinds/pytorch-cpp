@@ -52,9 +52,9 @@ int main()
   // * start the training
 
 
-  auto net = torch::resnet18_8s_pascal_voc();
+  auto net = torch::resnet34_8s_pascal_voc();
 
-  net->load_weights("../resnet18_fcn_new.h5");
+  net->load_weights("../resnet34_fcn_new.h5");
   net->cuda();
 
   VideoCapture cap(0); // open the default camera
@@ -71,6 +71,10 @@ int main()
         
     // BGR to RGB which is what our network was trained on
     cvtColor(frame, frame, COLOR_BGR2RGB);
+
+    // Resizing while preserving aspect ratio, comment out to run
+    // it on the whole input image.
+    resize(frame, frame, Size(0, 0), 0.5, 0.5, INTER_LINEAR);
       
     // Outputs height x width x 3 tensor converted from Opencv's Mat with 0-255 values
     // and convert to 0-1 range
