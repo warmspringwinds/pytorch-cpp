@@ -5,7 +5,7 @@ interface for building neural networks and inference (so far only forward pass i
 respects the semantics of ```torch.nn``` module of PyTorch. Models from [pytorch/vision](https://github.com/pytorch/vision)
 are supported and can be [easily converted](convert_weights.ipynb).
 
-The library heavily relies on a amazing [ATen](https://github.com/zdevito/ATen) library and was inspired by
+The library heavily relies on an amazing [ATen](https://github.com/zdevito/ATen) library and was inspired by
 [cunnproduction](https://github.com/szagoruyko/cunnproduction).
 
 
@@ -162,7 +162,26 @@ new_net->add(std::make_shared<torch::BatchNorm2d>(10));
 new_net->add(std::make_shared<torch::ReLU>());
 new_net->add(std::make_shared<torch::Linear>(10, 3));
 ```
+## Implemented layers
 
+So far, these layers are available which respect the Pytorch's layers semantics which
+can be found [here](http://pytorch.org/docs/0.1.12/nn.html#convolution-layers).
+
+```
+nn.Sequential
+nn.Conv2d
+nn.MaxPool2d
+nn.AvgPool2d
+nn.ReLU
+nn.Linear
+nn.SoftMax
+nn.BatchNorm2d
+```
+
+## Implemented models
+
+So far, these layers are available which respect the Pytorch's layers semantics which
+can be found [here](http://pytorch.org/docs/0.1.12/nn.html#convolution-layers).
 
 ## Installation
 
