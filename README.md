@@ -114,7 +114,7 @@ ResNet (
 )
 ```
 
-### Inspect the a tensor
+### Inspect a Tensor
 
 
 ```c++
@@ -150,6 +150,17 @@ Columns 981 to 990-0.2914 -0.2242 -0.8063 -0.7818 -0.2714  0.0002 -1.2355  0.123
 
 Columns 991 to 1000 0.5216 -1.8008 -1.7826 -1.2970 -1.6565 -1.3306 -0.6564 -1.6531  0.1178  0.2436
 [ CUDAFloatTensor{1,1000} ]
+```
+
+### Create a network
+
+
+```c++
+auto new_net = std::make_shared<torch::Sequential>();
+new_net->add(std::make_shared<torch::Conv2d>(3, 10, 3, 3));
+new_net->add(std::make_shared<torch::BatchNorm2d>(10));
+new_net->add(std::make_shared<torch::ReLU>());
+new_net->add(std::make_shared<torch::Linear>(10, 3));
 ```
 
 
