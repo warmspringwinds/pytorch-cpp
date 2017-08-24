@@ -8,6 +8,8 @@ are supported and can be [easily converted](convert_weights.ipynb).
 The library heavily relies on an amazing [ATen](https://github.com/zdevito/ATen) library and was inspired by
 [cunnproduction](https://github.com/szagoruyko/cunnproduction).
 
+The structure of the project and CMake will be changed in a future, as it is not optimal now.
+
 ## Table of contents
 
 <a href="#use-cases">Use-cases</a><br>
