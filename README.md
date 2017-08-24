@@ -24,7 +24,7 @@ We use ```HDF5``` to be able to [easily convert](convert_weights.ipynb) weigths 
 
 ### Opencv
 
-We need ```OpenCV`` for a couple of examples which grab frames from a web camera.
+We need ```OpenCV``` for a couple of examples which grab frames from a web camera.
 It is not a dependency and can be removed if necessary.
 This was tested on ```Ubuntu-16``` and might need some changes on a different system.
 
