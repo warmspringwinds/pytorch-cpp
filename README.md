@@ -176,9 +176,11 @@ can be found [here](http://pytorch.org/docs/0.1.12/nn.html#convolution-layers).
 - [x] nn.Linear
 - [x] nn.SoftMax
 - [x] nn.BatchNorm2d
-- [ ] nn.Conv2d
-- [ ] nn.MaxPool2d
-
+- [ ] nn.Dropout2d
+- [ ] nn.DataParallel
+- [ ] nn.AdaptiveMaxPool2d
+- [ ] nn.Sigmoid
+and others.
 
 ## Implemented models
 
