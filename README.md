@@ -24,6 +24,29 @@ Conversion from other image types like OpenCV's ```mat``` to ```Tensor``` can be
 can be done using numpy-like optimized operations, thanks to [ATen](https://github.com/zdevito/ATen) library.
 See examples [here](examples/opencv_realtime_webcam_human_segmentation.cpp).
 
+
+# Features
+
+## Pretrained models
+
+
+```
+auto net = torch::resnet50_imagenet();
+
+net->load_weights("../resnet50_imagenet.h5");
+net->cuda();
+
+Tensor dummy_input = CUDA(kFloat).ones({1, 3, 224, 224});
+
+auto result = net->forward(dummy_input);
+
+map<string, Tensor> dict;
+
+dict["main"] = result.toBackend(Backend::CPU);
+
+torch::save("resnet50_output.h5", dict);
+```
+
 ## Installation
 
 ### ATen
