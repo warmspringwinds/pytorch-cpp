@@ -41,7 +41,7 @@ int main()
 
   // * Make the classification demo?
   // * need to put a softmax on top -- should be very easy
-  // * need a dict with number --> class name mapping (now)
+  // * need a dict with number --> class name mapping (check)
 
   // * Structure the whole project (check)
   // * write docs on how to build it
