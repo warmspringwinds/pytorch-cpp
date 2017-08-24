@@ -19,7 +19,7 @@ application on GPU and avoid expensive transfer to CPU. See [this example](examp
 
 Conversion from other image types like OpenCV's ```mat``` to ```Tensor``` can be easily performed and all the post-processing
 can be done using numpy-lik optimized operations, thanks to [ATen](https://github.com/zdevito/ATen) library.
-See examples [here]([this example](examples/opencv_realtime_webcam_human_segmentation.cpp).
+See examples [here](examples/opencv_realtime_webcam_human_segmentation.cpp).
 
 ## Installation
 
