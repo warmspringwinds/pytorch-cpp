@@ -5,6 +5,9 @@ interface for building neural networks and inference (so far only forward pass i
 respects the semantics of ```torch.nn``` module of PyTorch. Models from [pytorch/vision](https://github.com/pytorch/vision)
 are supported and can be [easily converted](convert_weights.ipynb).
 
+The library heavily relies on a amazing [ATen](https://github.com/zdevito/ATen) library and was inspired by
+[cunnproduction](https://github.com/szagoruyko/cunnproduction).
+
 
 # Use-cases
 
@@ -18,7 +21,7 @@ you can use a memory that was already allocated on GPU. This way you can accept 
 application on GPU and avoid expensive transfer to CPU. See [this example](examples/read_allocated_gpu_memory.cpp).
 
 Conversion from other image types like OpenCV's ```mat``` to ```Tensor``` can be easily performed and all the post-processing
-can be done using numpy-lik optimized operations, thanks to [ATen](https://github.com/zdevito/ATen) library.
+can be done using numpy-like optimized operations, thanks to [ATen](https://github.com/zdevito/ATen) library.
 See examples [here](examples/opencv_realtime_webcam_human_segmentation.cpp).
 
 ## Installation
