@@ -42,5 +42,7 @@ these steps:
 1. ```make```
 2. ```cd ../``` -- return back
 
+### Problems with the build
+
 If you face any problems or some steps are not clear, please open an issue. Note: every time you enter the ```cmake-gui```
 press ```configure``` first, then specify your ```CUDA``` path and then press ```generate```, after that you can build.
