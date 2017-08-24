@@ -9,7 +9,7 @@ The library heavily relies on a amazing [ATen](https://github.com/zdevito/ATen) 
 [cunnproduction](https://github.com/szagoruyko/cunnproduction).
 
 
-# Use-cases
+## Use-cases
 
 The library can be used in cases where you want to integrate your trained ```Pytorch```
 networks into an existing C++ stack and you don't want to convert your weights to other libraries
@@ -25,26 +25,235 @@ can be done using numpy-like optimized operations, thanks to [ATen](https://gith
 See examples [here](examples/opencv_realtime_webcam_human_segmentation.cpp).
 
 
-# Features
+## Some examples
 
-## Pretrained models
+### Inference
 
 ```c++
 auto net = torch::resnet50_imagenet();
 
 net->load_weights("../resnet50_imagenet.h5");
+
+# Transfer network to GPU
 net->cuda();
 
+# Generate a dummy tensor on GPU of type float
 Tensor dummy_input = CUDA(kFloat).ones({1, 3, 224, 224});
 
+# Perform inference
 auto result = net->forward(dummy_input);
 
 map<string, Tensor> dict;
 
+# Get the result of the inference back to CPU
 dict["main"] = result.toBackend(Backend::CPU);
 
+# Save the result of the inference in the HDF5 file
 torch::save("resnet50_output.h5", dict);
 ```
+
+### Display network's architecture
+
+```c++
+
+auto net = torch::resnet50_imagenet();
+
+net->load_weights("../resnet50_imagenet.h5");
+
+cout << net->tostring() << endl;
+
+```
+
+Output:
+
+```
+ResNet (
+ (conv1)  Conv2d( in_channels=3 out_channels=64 kernel_size=(7, 7) stride=(2, 2) padding=(3, 3) dilation=(1, 1) groups=1 bias=0 )
+ (bn1)  BatchNorm2d( num_features=64 eps=0.000010 momentum=0.100000 )
+ (relu)  ReLU
+ (maxpool)  MaxPool2d( kernel_size=(3, 3) stride=(2, 2) padding=(1, 1) )
+ (layer1)  Sequential (
+  (0)   Bottleneck (
+   (conv1)    Conv2d( in_channels=64 out_channels=64 kernel_size=(1, 1) stride=(1, 1) padding=(0, 0) dilation=(1, 1) groups=1 bias=0 )
+   (bn1)    BatchNorm2d( num_features=64 eps=0.000010 momentum=0.100000 )
+   (conv2)    Conv2d( in_channels=64 out_channels=64 kernel_size=(3, 3) stride=(1, 1) padding=(1, 1) dilation=(1, 1) groups=1 bias=0 )
+   (bn2)    BatchNorm2d( num_features=64 eps=0.000010 momentum=0.100000 )
+   (conv3)    Conv2d( in_channels=64 out_channels=256 kernel_size=(1, 1) stride=(1, 1) padding=(0, 0) dilation=(1, 1) groups=1 bias=0 )
+   (bn3)    BatchNorm2d( num_features=256 eps=0.000010 momentum=0.100000 )
+   (downsample)    Sequential (
+    (0)     Conv2d( in_channels=64 out_channels=256 kernel_size=(1, 1) stride=(1, 1) padding=(0, 0) dilation=(1, 1) groups=1 bias=0 )
+    (1)     BatchNorm2d( num_features=256 eps=0.000010 momentum=0.100000 )
+   )
+
+  )
+
+  (1)   Bottleneck (
+   (conv1)    Conv2d( in_channels=256 out_channels=64 kernel_size=(1, 1) stride=(1, 1) padding=(0, 0) dilation=(1, 1) groups=1 bias=0 )
+   (bn1)    BatchNorm2d( num_features=64 eps=0.000010 momentum=0.100000 )
+   (conv2)    Conv2d( in_channels=64 out_channels=64 kernel_size=(3, 3) stride=(1, 1) padding=(1, 1) dilation=(1, 1) groups=1 bias=0 )
+   (bn2)    BatchNorm2d( num_features=64 eps=0.000010 momentum=0.100000 )
+   (conv3)    Conv2d( in_channels=256 out_channels=256 kernel_size=(1, 1) stride=(1, 1) padding=(0, 0) dilation=(1, 1) groups=1 bias=0 )
+   (bn3)    BatchNorm2d( num_features=256 eps=0.000010 momentum=0.100000 )
+  )
+
+  (2)   Bottleneck (
+   (conv1)    Conv2d( in_channels=256 out_channels=64 kernel_size=(1, 1) stride=(1, 1) padding=(0, 0) dilation=(1, 1) groups=1 bias=0 )
+   (bn1)    BatchNorm2d( num_features=64 eps=0.000010 momentum=0.100000 )
+   (conv2)    Conv2d( in_channels=64 out_channels=64 kernel_size=(3, 3) stride=(1, 1) padding=(1, 1) dilation=(1, 1) groups=1 bias=0 )
+   (bn2)    BatchNorm2d( num_features=64 eps=0.000010 momentum=0.100000 )
+   (conv3)    Conv2d( in_channels=256 out_channels=256 kernel_size=(1, 1) stride=(1, 1) padding=(0, 0) dilation=(1, 1) groups=1 bias=0 )
+   (bn3)    BatchNorm2d( num_features=256 eps=0.000010 momentum=0.100000 )
+  )
+
+ )
+
+ (layer2)  Sequential (
+  (0)   Bottleneck (
+   (conv1)    Conv2d( in_channels=256 out_channels=128 kernel_size=(1, 1) stride=(1, 1) padding=(0, 0) dilation=(1, 1) groups=1 bias=0 )
+   (bn1)    BatchNorm2d( num_features=128 eps=0.000010 momentum=0.100000 )
+   (conv2)    Conv2d( in_channels=128 out_channels=128 kernel_size=(3, 3) stride=(2, 2) padding=(1, 1) dilation=(1, 1) groups=1 bias=0 )
+   (bn2)    BatchNorm2d( num_features=128 eps=0.000010 momentum=0.100000 )
+   (conv3)    Conv2d( in_channels=256 out_channels=512 kernel_size=(1, 1) stride=(1, 1) padding=(0, 0) dilation=(1, 1) groups=1 bias=0 )
+   (bn3)    BatchNorm2d( num_features=512 eps=0.000010 momentum=0.100000 )
+   (downsample)    Sequential (
+    (0)     Conv2d( in_channels=256 out_channels=512 kernel_size=(1, 1) stride=(2, 2) padding=(0, 0) dilation=(1, 1) groups=1 bias=0 )
+    (1)     BatchNorm2d( num_features=512 eps=0.000010 momentum=0.100000 )
+   )
+
+  )
+
+  (1)   Bottleneck (
+   (conv1)    Conv2d( in_channels=512 out_channels=128 kernel_size=(1, 1) stride=(1, 1) padding=(0, 0) dilation=(1, 1) groups=1 bias=0 )
+   (bn1)    BatchNorm2d( num_features=128 eps=0.000010 momentum=0.100000 )
+   (conv2)    Conv2d( in_channels=128 out_channels=128 kernel_size=(3, 3) stride=(1, 1) padding=(1, 1) dilation=(1, 1) groups=1 bias=0 )
+   (bn2)    BatchNorm2d( num_features=128 eps=0.000010 momentum=0.100000 )
+   (conv3)    Conv2d( in_channels=512 out_channels=512 kernel_size=(1, 1) stride=(1, 1) padding=(0, 0) dilation=(1, 1) groups=1 bias=0 )
+   (bn3)    BatchNorm2d( num_features=512 eps=0.000010 momentum=0.100000 )
+  )
+
+  (2)   Bottleneck (
+   (conv1)    Conv2d( in_channels=512 out_channels=128 kernel_size=(1, 1) stride=(1, 1) padding=(0, 0) dilation=(1, 1) groups=1 bias=0 )
+   (bn1)    BatchNorm2d( num_features=128 eps=0.000010 momentum=0.100000 )
+   (conv2)    Conv2d( in_channels=128 out_channels=128 kernel_size=(3, 3) stride=(1, 1) padding=(1, 1) dilation=(1, 1) groups=1 bias=0 )
+   (bn2)    BatchNorm2d( num_features=128 eps=0.000010 momentum=0.100000 )
+   (conv3)    Conv2d( in_channels=512 out_channels=512 kernel_size=(1, 1) stride=(1, 1) padding=(0, 0) dilation=(1, 1) groups=1 bias=0 )
+   (bn3)    BatchNorm2d( num_features=512 eps=0.000010 momentum=0.100000 )
+  )
+
+  (3)   Bottleneck (
+   (conv1)    Conv2d( in_channels=512 out_channels=128 kernel_size=(1, 1) stride=(1, 1) padding=(0, 0) dilation=(1, 1) groups=1 bias=0 )
+   (bn1)    BatchNorm2d( num_features=128 eps=0.000010 momentum=0.100000 )
+   (conv2)    Conv2d( in_channels=128 out_channels=128 kernel_size=(3, 3) stride=(1, 1) padding=(1, 1) dilation=(1, 1) groups=1 bias=0 )
+   (bn2)    BatchNorm2d( num_features=128 eps=0.000010 momentum=0.100000 )
+   (conv3)    Conv2d( in_channels=512 out_channels=512 kernel_size=(1, 1) stride=(1, 1) padding=(0, 0) dilation=(1, 1) groups=1 bias=0 )
+   (bn3)    BatchNorm2d( num_features=512 eps=0.000010 momentum=0.100000 )
+  )
+
+ )
+
+ (layer3)  Sequential (
+  (0)   Bottleneck (
+   (conv1)    Conv2d( in_channels=512 out_channels=256 kernel_size=(1, 1) stride=(1, 1) padding=(0, 0) dilation=(1, 1) groups=1 bias=0 )
+   (bn1)    BatchNorm2d( num_features=256 eps=0.000010 momentum=0.100000 )
+   (conv2)    Conv2d( in_channels=256 out_channels=256 kernel_size=(3, 3) stride=(2, 2) padding=(1, 1) dilation=(1, 1) groups=1 bias=0 )
+   (bn2)    BatchNorm2d( num_features=256 eps=0.000010 momentum=0.100000 )
+   (conv3)    Conv2d( in_channels=512 out_channels=1024 kernel_size=(1, 1) stride=(1, 1) padding=(0, 0) dilation=(1, 1) groups=1 bias=0 )
+   (bn3)    BatchNorm2d( num_features=1024 eps=0.000010 momentum=0.100000 )
+   (downsample)    Sequential (
+    (0)     Conv2d( in_channels=512 out_channels=1024 kernel_size=(1, 1) stride=(2, 2) padding=(0, 0) dilation=(1, 1) groups=1 bias=0 )
+    (1)     BatchNorm2d( num_features=1024 eps=0.000010 momentum=0.100000 )
+   )
+
+  )
+
+  (1)   Bottleneck (
+   (conv1)    Conv2d( in_channels=1024 out_channels=256 kernel_size=(1, 1) stride=(1, 1) padding=(0, 0) dilation=(1, 1) groups=1 bias=0 )
+   (bn1)    BatchNorm2d( num_features=256 eps=0.000010 momentum=0.100000 )
+   (conv2)    Conv2d( in_channels=256 out_channels=256 kernel_size=(3, 3) stride=(1, 1) padding=(1, 1) dilation=(1, 1) groups=1 bias=0 )
+   (bn2)    BatchNorm2d( num_features=256 eps=0.000010 momentum=0.100000 )
+   (conv3)    Conv2d( in_channels=1024 out_channels=1024 kernel_size=(1, 1) stride=(1, 1) padding=(0, 0) dilation=(1, 1) groups=1 bias=0 )
+   (bn3)    BatchNorm2d( num_features=1024 eps=0.000010 momentum=0.100000 )
+  )
+
+  (2)   Bottleneck (
+   (conv1)    Conv2d( in_channels=1024 out_channels=256 kernel_size=(1, 1) stride=(1, 1) padding=(0, 0) dilation=(1, 1) groups=1 bias=0 )
+   (bn1)    BatchNorm2d( num_features=256 eps=0.000010 momentum=0.100000 )
+   (conv2)    Conv2d( in_channels=256 out_channels=256 kernel_size=(3, 3) stride=(1, 1) padding=(1, 1) dilation=(1, 1) groups=1 bias=0 )
+   (bn2)    BatchNorm2d( num_features=256 eps=0.000010 momentum=0.100000 )
+   (conv3)    Conv2d( in_channels=1024 out_channels=1024 kernel_size=(1, 1) stride=(1, 1) padding=(0, 0) dilation=(1, 1) groups=1 bias=0 )
+   (bn3)    BatchNorm2d( num_features=1024 eps=0.000010 momentum=0.100000 )
+  )
+
+  (3)   Bottleneck (
+   (conv1)    Conv2d( in_channels=1024 out_channels=256 kernel_size=(1, 1) stride=(1, 1) padding=(0, 0) dilation=(1, 1) groups=1 bias=0 )
+   (bn1)    BatchNorm2d( num_features=256 eps=0.000010 momentum=0.100000 )
+   (conv2)    Conv2d( in_channels=256 out_channels=256 kernel_size=(3, 3) stride=(1, 1) padding=(1, 1) dilation=(1, 1) groups=1 bias=0 )
+   (bn2)    BatchNorm2d( num_features=256 eps=0.000010 momentum=0.100000 )
+   (conv3)    Conv2d( in_channels=1024 out_channels=1024 kernel_size=(1, 1) stride=(1, 1) padding=(0, 0) dilation=(1, 1) groups=1 bias=0 )
+   (bn3)    BatchNorm2d( num_features=1024 eps=0.000010 momentum=0.100000 )
+  )
+
+  (4)   Bottleneck (
+   (conv1)    Conv2d( in_channels=1024 out_channels=256 kernel_size=(1, 1) stride=(1, 1) padding=(0, 0) dilation=(1, 1) groups=1 bias=0 )
+   (bn1)    BatchNorm2d( num_features=256 eps=0.000010 momentum=0.100000 )
+   (conv2)    Conv2d( in_channels=256 out_channels=256 kernel_size=(3, 3) stride=(1, 1) padding=(1, 1) dilation=(1, 1) groups=1 bias=0 )
+   (bn2)    BatchNorm2d( num_features=256 eps=0.000010 momentum=0.100000 )
+   (conv3)    Conv2d( in_channels=1024 out_channels=1024 kernel_size=(1, 1) stride=(1, 1) padding=(0, 0) dilation=(1, 1) groups=1 bias=0 )
+   (bn3)    BatchNorm2d( num_features=1024 eps=0.000010 momentum=0.100000 )
+  )
+
+  (5)   Bottleneck (
+   (conv1)    Conv2d( in_channels=1024 out_channels=256 kernel_size=(1, 1) stride=(1, 1) padding=(0, 0) dilation=(1, 1) groups=1 bias=0 )
+   (bn1)    BatchNorm2d( num_features=256 eps=0.000010 momentum=0.100000 )
+   (conv2)    Conv2d( in_channels=256 out_channels=256 kernel_size=(3, 3) stride=(1, 1) padding=(1, 1) dilation=(1, 1) groups=1 bias=0 )
+   (bn2)    BatchNorm2d( num_features=256 eps=0.000010 momentum=0.100000 )
+   (conv3)    Conv2d( in_channels=1024 out_channels=1024 kernel_size=(1, 1) stride=(1, 1) padding=(0, 0) dilation=(1, 1) groups=1 bias=0 )
+   (bn3)    BatchNorm2d( num_features=1024 eps=0.000010 momentum=0.100000 )
+  )
+
+ )
+
+ (layer4)  Sequential (
+  (0)   Bottleneck (
+   (conv1)    Conv2d( in_channels=1024 out_channels=512 kernel_size=(1, 1) stride=(1, 1) padding=(0, 0) dilation=(1, 1) groups=1 bias=0 )
+   (bn1)    BatchNorm2d( num_features=512 eps=0.000010 momentum=0.100000 )
+   (conv2)    Conv2d( in_channels=512 out_channels=512 kernel_size=(3, 3) stride=(2, 2) padding=(1, 1) dilation=(1, 1) groups=1 bias=0 )
+   (bn2)    BatchNorm2d( num_features=512 eps=0.000010 momentum=0.100000 )
+   (conv3)    Conv2d( in_channels=1024 out_channels=2048 kernel_size=(1, 1) stride=(1, 1) padding=(0, 0) dilation=(1, 1) groups=1 bias=0 )
+   (bn3)    BatchNorm2d( num_features=2048 eps=0.000010 momentum=0.100000 )
+   (downsample)    Sequential (
+    (0)     Conv2d( in_channels=1024 out_channels=2048 kernel_size=(1, 1) stride=(2, 2) padding=(0, 0) dilation=(1, 1) groups=1 bias=0 )
+    (1)     BatchNorm2d( num_features=2048 eps=0.000010 momentum=0.100000 )
+   )
+
+  )
+
+  (1)   Bottleneck (
+   (conv1)    Conv2d( in_channels=2048 out_channels=512 kernel_size=(1, 1) stride=(1, 1) padding=(0, 0) dilation=(1, 1) groups=1 bias=0 )
+   (bn1)    BatchNorm2d( num_features=512 eps=0.000010 momentum=0.100000 )
+   (conv2)    Conv2d( in_channels=512 out_channels=512 kernel_size=(3, 3) stride=(1, 1) padding=(1, 1) dilation=(1, 1) groups=1 bias=0 )
+   (bn2)    BatchNorm2d( num_features=512 eps=0.000010 momentum=0.100000 )
+   (conv3)    Conv2d( in_channels=2048 out_channels=2048 kernel_size=(1, 1) stride=(1, 1) padding=(0, 0) dilation=(1, 1) groups=1 bias=0 )
+   (bn3)    BatchNorm2d( num_features=2048 eps=0.000010 momentum=0.100000 )
+  )
+
+  (2)   Bottleneck (
+   (conv1)    Conv2d( in_channels=2048 out_channels=512 kernel_size=(1, 1) stride=(1, 1) padding=(0, 0) dilation=(1, 1) groups=1 bias=0 )
+   (bn1)    BatchNorm2d( num_features=512 eps=0.000010 momentum=0.100000 )
+   (conv2)    Conv2d( in_channels=512 out_channels=512 kernel_size=(3, 3) stride=(1, 1) padding=(1, 1) dilation=(1, 1) groups=1 bias=0 )
+   (bn2)    BatchNorm2d( num_features=512 eps=0.000010 momentum=0.100000 )
+   (conv3)    Conv2d( in_channels=2048 out_channels=2048 kernel_size=(1, 1) stride=(1, 1) padding=(0, 0) dilation=(1, 1) groups=1 bias=0 )
+   (bn3)    BatchNorm2d( num_features=2048 eps=0.000010 momentum=0.100000 )
+  )
+
+ )
+
+ (avgpool)  AvgPool2d( kernel_size=(7, 7) stride=(1, 1) padding=(0, 0) )
+ (fc)  nn.Linear( in_features=2048 out_features=1000 bias=1 )
+)
+```
+
+
 
 ## Installation
 
