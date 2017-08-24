@@ -1,5 +1,11 @@
 # Pytorch-C++
 
+```Pytorch-C++``` is a simple C++ 11 library which provides a [Pytorch](http://pytorch.org/)-like
+interface for building neural networks and forward inference (so far only forward inference is supported). The library
+respects the semantics of ```torch.nn``` module of PyTorch. Models from [pytorch/vision](https://github.com/pytorch/vision)
+are supported and can be [easily converted](convert_weights.ipynb).
+
+
 ## Installation
 
 ### ATen
