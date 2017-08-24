@@ -8,6 +8,17 @@ are supported and can be [easily converted](convert_weights.ipynb).
 The library heavily relies on an amazing [ATen](https://github.com/zdevito/ATen) library and was inspired by
 [cunnproduction](https://github.com/szagoruyko/cunnproduction).
 
+## Table of contents
+
+<a href="#Use-cases">Use-cases</a><br>
+<a href='#Some examples'>Examples</a><br>
+<a href='#Pretrained'>Using pre-trained models</a><br>
+<a href='#Training'>Training from scratch</a><br>
+<a href='#Tuning'>Fine tuning to a new task</a><br>
+<a href='#Eval'>Evaluating performance</a><br>
+<a href='#Export'>Exporting Inference Graph</a><br>
+<a href='#Troubleshooting'>Troubleshooting</a><br>
+
 
 ## Use-cases
 
@@ -262,3 +273,26 @@ these steps:
 
 If you face any problems or some steps are not clear, please open an issue. Note: every time you enter the ```cmake-gui```
 press ```configure``` first, then specify your ```CUDA``` path and then press ```generate```, after that you can build.
+
+
+
+## About
+
+If you used the code for your research, please, cite the paper:
+
+    @article{pakhomov2017deep,
+      title={Deep Residual Learning for Instrument Segmentation in Robotic Surgery},
+      author={Pakhomov, Daniil and Premachandran, Vittal and Allan, Max and Azizian, Mahdi and Navab, Nassir},
+      journal={arXiv preprint arXiv:1703.08580},
+      year={2017}
+    }
+
+During implementation, some preliminary experiments and notes were reported:
+- [Converting Image Classification network into FCN](http://warmspringwinds.github.io/tensorflow/tf-slim/2016/10/30/image-classification-and-segmentation-using-tensorflow-and-tf-slim/)
+- [Performing upsampling using transposed convolution](http://warmspringwinds.github.io/tensorflow/tf-slim/2016/11/22/upsampling-and-image-segmentation-with-tensorflow-and-tf-slim/)
+- [Conditional Random Fields for Refining of Segmentation and Coarseness of FCN-32s model segmentations](http://warmspringwinds.github.io/tensorflow/tf-slim/2016/12/18/image-segmentation-with-tensorflow-using-cnns-and-conditional-random-fields/)
+- [TF-records usage](http://warmspringwinds.github.io/tensorflow/tf-slim/2016/12/21/tfrecords-guide/)
+
+## Contributors
+
+- Daniil Pakhomov
