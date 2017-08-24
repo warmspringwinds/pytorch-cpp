@@ -44,7 +44,9 @@ int main()
   // * need a dict with number --> class name mapping (check)
 
   // * Structure the whole project (check)
+
   // * write docs on how to build it
+  
   // * write missing parts -- good for future contributions
 
   // * Write the dataloaders for the new surgical datasets
