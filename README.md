@@ -16,7 +16,7 @@ Follow these steps to install it:
 
 ### HDF5
 
-We use ```HDF5``` to be able to be able to [easily convert](convert_weights.ipynb) weigths between ```Pytorch``` and ```Pytorch-C++```.
+We use ```HDF5``` to be able to [easily convert](convert_weights.ipynb) weigths between ```Pytorch``` and ```Pytorch-C++```.
 
 0. ```wget https://support.hdfgroup.org/ftp/HDF5/current18/src/CMake-hdf5-1.8.19.tar.gz; tar xvzf CMake-hdf5-1.8.19.tar.gz```
 1. ```cd CMake-hdf5-1.8.19; ./build-unix.sh```
@@ -24,6 +24,8 @@ We use ```HDF5``` to be able to be able to [easily convert](convert_weights.ipyn
 
 ### Opencv
 
+We need ```OpenCV`` for a couple of examples which grab frames from a web camera.
+It is not a dependency and can be removed if necessary.
 This was tested on ```Ubuntu-16``` and might need some changes on a different system.
 
 0. ```sudo apt-get install libopencv-dev python-opencv```
