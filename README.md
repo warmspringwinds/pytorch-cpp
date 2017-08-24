@@ -184,8 +184,37 @@ and others.
 
 ## Implemented models
 
-So far, these layers are available which respect the Pytorch's layers semantics which
-can be found [here](http://pytorch.org/docs/0.1.12/nn.html#convolution-layers).
+### Imagenet models
+
+All models were converted from [pytorch/vision](https://github.com/pytorch/vision) and checked for
+correctness.
+
+- [x] Resnet-18
+- [x] Resnet-34
+- [x] Resnet-50
+- [x] Resnet-101
+- [x] Resnet-150
+- [x] Resnet-152
+- [ ] All VGG models
+- [ ] All Densenet models
+- [ ] All Inception models
+- [ ] All squeezenet models
+- [ ] Alexnet
+
+### Segmentation PASCAL VOC 
+
+All models were converted from [this repository](https://github.com/warmspringwinds/dense-ai) and checked for
+correctness.
+
+- [x] Resnet-18-8S
+- [x] Resnet-34-8S
+- [ ] Resnet-50-8S
+- [ ] Resnet-101-8S
+- [ ] Resnet-152-8S
+- [x] FCN-32s
+- [ ] FCN-16s
+- [ ] FCN-8s
+
 
 ## Installation
 
