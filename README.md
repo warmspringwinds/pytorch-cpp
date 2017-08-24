@@ -167,16 +167,18 @@ new_net->add(std::make_shared<torch::Linear>(10, 3));
 So far, these layers are available which respect the Pytorch's layers semantics which
 can be found [here](http://pytorch.org/docs/0.1.12/nn.html#convolution-layers).
 
-```
-nn.Sequential
-nn.Conv2d
-nn.MaxPool2d
-nn.AvgPool2d
-nn.ReLU
-nn.Linear
-nn.SoftMax
-nn.BatchNorm2d
-```
+
+- [x] nn.Sequential
+- [x] nn.Conv2d
+- [x] nn.MaxPool2d
+- [x] nn.AvgPool2d
+- [x] nn.ReLU
+- [x] nn.Linear
+- [x] nn.SoftMax
+- [x] nn.BatchNorm2d
+- [ ] nn.Conv2d
+- [ ] nn.MaxPool2d
+
 
 ## Implemented models
 
