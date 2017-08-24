@@ -12,6 +12,22 @@ Follow these steps to install it:
 1. ```git clone --recursive https://github.com/warmspringwinds/pytorch-cpp```
 2. ```cd pytorch-cpp/ATen;mkdir build;cd build;cmake-gui .. ``` and specify ```CUDA_TOOLKIT_ROOT_DIR```.
 3. ```make``` or better ```make -j7``` (replace ```7``` with a number of cores that you have).
+4. ```cd ../../``` -- returns you back to the root directory (necessary for the next step).
+
+### HDF5
+
+We use ```HDF5`` to be able to be able to [easily convert](comparison.ipynb) weigths between ```Pytorch``` and ```Pytorch-C++```.
+
+0. ```wget https://support.hdfgroup.org/ftp/HDF5/current18/src/CMake-hdf5-1.8.19.tar.gz; tar xvzf CMake-hdf5-1.8.19.tar.gz```
+1. ```cd CMake-hdf5-1.8.19; ./build-unix.sh```
+2. ```cd ../``` -- return back.
+
+### Opencv
+
+This was tested on ```Ubuntu-16``` and might need some changes on a different system.
+
+0. ```sudo apt-get install libopencv-dev python-opencv```
+
 
 ### Pytorch-C++
 
