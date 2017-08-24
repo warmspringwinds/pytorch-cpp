@@ -35,4 +35,11 @@ This was tested on ```Ubuntu-16``` and might need some changes on a different sy
 
 ```Pytorch-C++``` is a library on top of ```ATen``` that provides a [Pytorch](http://pytorch.org/)-like
 interface for building neural networks and forward inference (so far only forward inference is supported)
-inspired by [cunnproduction](https://github.com/szagoruyko/cunnproduction) library.
+inspired by [cunnproduction](https://github.com/szagoruyko/cunnproduction) library. To install it, follow
+these steps:
+
+0. ```mkdir build; cd build; cmake-gui ..``` and specify ```CUDA_TOOLKIT_ROOT_DIR```.
+1. ```make```
+2. ```cd ../``` -- return back
+
+If you face any problem or some steps are not clear, please open an issue.
