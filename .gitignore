@@ -6,4 +6,4 @@ CMake-hdf5-1.8.19/
 *.ipynb
 *.swp
 
-!comparison.ipynb
+!convert_weights.ipynb
