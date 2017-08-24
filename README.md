@@ -13,7 +13,7 @@ networks into an existing C++ stack and you don't want to convert your weights t
 like ```Caffe/Caffe2/Tensorflow```. The library respects the semantics of the ```Pytorch``` and uses
 the same underlying C library to perform all the operations.
 
-You can also use this library if you want a more low-level control over your memory. For example,
+You can achieve more low-level control over your memory. For example,
 you can use a memory that was already allocated on GPU. This way you can accept memory from other
 application on GPU and avoid expensive transfer to CPU. See [this example](examples/read_allocated_gpu_memory.cpp).
 
