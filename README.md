@@ -10,14 +10,13 @@ The library heavily relies on an amazing [ATen](https://github.com/zdevito/ATen)
 
 ## Table of contents
 
-<a href="#Use-cases">Use-cases</a><br>
-<a href='#Some examples'>Examples</a><br>
-<a href='#Pretrained'>Using pre-trained models</a><br>
-<a href='#Training'>Training from scratch</a><br>
-<a href='#Tuning'>Fine tuning to a new task</a><br>
-<a href='#Eval'>Evaluating performance</a><br>
-<a href='#Export'>Exporting Inference Graph</a><br>
-<a href='#Troubleshooting'>Troubleshooting</a><br>
+<a href="#use-cases">Use-cases</a><br>
+<a href='#some-examples'>Examples</a><br>
+<a href='#implemented-layers'>Implemented layers</a><br>
+<a href='#implemented-models'>Implemented models</a><br>
+<a href='#installation'>Installation</a><br>
+<a href='#about'>About</a><br>
+<a href='#contributors'>Contributors</a><br>
 
 
 ## Use-cases
