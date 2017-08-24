@@ -29,8 +29,7 @@ See examples [here](examples/opencv_realtime_webcam_human_segmentation.cpp).
 
 ## Pretrained models
 
-
-```
+```c++
 auto net = torch::resnet50_imagenet();
 
 net->load_weights("../resnet50_imagenet.h5");
