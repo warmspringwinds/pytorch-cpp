@@ -1,10 +1,21 @@
 # Pytorch-C++
 
 ```Pytorch-C++``` is a simple C++ 11 library which provides a [Pytorch](http://pytorch.org/)-like
-interface for building neural networks and forward inference (so far only forward inference is supported). The library
+interface for building neural networks and inference (so far only forward pass is supported). The library
 respects the semantics of ```torch.nn``` module of PyTorch. Models from [pytorch/vision](https://github.com/pytorch/vision)
 are supported and can be [easily converted](convert_weights.ipynb).
 
+
+# Use-cases
+
+The library can be used in cases where you want to integrate your trained ```Pytorch```
+networks into an existing C++ stack and you don't want to convert your weights to other libraries
+like ```Caffe/Caffe2/Tensorflow```. The library respects the semantics of the ```Pytorch``` and uses
+the same underlying C library to perform all the operations.
+
+You can also use this library if you want a more low-level control over your memory. For example,
+you can use a memory that was already allocated on GPU. This way you can accept memory from other
+application on GPU and avoid expensive transfer to CPU. See [this example](examples/read_allocated_gpu_memory.cpp).
 
 ## Installation
 
@@ -40,7 +51,7 @@ This was tested on ```Ubuntu-16``` and might need some changes on a different sy
 ### Pytorch-C++
 
 ```Pytorch-C++``` is a library on top of ```ATen``` that provides a [Pytorch](http://pytorch.org/)-like
-interface for building neural networks and forward inference (so far only forward inference is supported)
+interface for building neural networks and inference (so far only forward pass is supported)
 inspired by [cunnproduction](https://github.com/szagoruyko/cunnproduction) library. To install it, follow
 these steps:
 
