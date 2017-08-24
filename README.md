@@ -16,7 +16,7 @@ Follow these steps to install it:
 
 ### HDF5
 
-We use ```HDF5`` to be able to be able to [easily convert](comparison.ipynb) weigths between ```Pytorch``` and ```Pytorch-C++```.
+We use ```HDF5``` to be able to be able to [easily convert](comparison.ipynb) weigths between ```Pytorch``` and ```Pytorch-C++```.
 
 0. ```wget https://support.hdfgroup.org/ftp/HDF5/current18/src/CMake-hdf5-1.8.19.tar.gz; tar xvzf CMake-hdf5-1.8.19.tar.gz```
 1. ```cd CMake-hdf5-1.8.19; ./build-unix.sh```
