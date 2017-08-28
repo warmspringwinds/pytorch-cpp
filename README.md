@@ -196,6 +196,8 @@ and others.
 
 ## Implemented models
 
+Some convered models are provided for ease of access. Other models can be [easily converted](convert_weights.ipynb).
+
 ### Imagenet models
 
 All models were converted from [pytorch/vision](https://github.com/pytorch/vision) and checked for
@@ -203,7 +205,7 @@ correctness.
 
 - [x] Resnet-18
 - [x] Resnet-34
-- [x] Resnet-50
+- [x] [Resnet-50](https://www.dropbox.com/s/bukezzx17dr8qdd/resnet50_imagenet.h5?dl=0)
 - [x] Resnet-101
 - [x] Resnet-150
 - [x] Resnet-152
@@ -219,7 +221,7 @@ All models were converted from [this repository](https://github.com/warmspringwi
 correctness.
 
 - [x] Resnet-18-8S
-- [x] Resnet-34-8S
+- [x] [Resnet-34-8S](https://www.dropbox.com/s/104my8hr5zm6l7d/resnet34_fcn_pascal.h5?dl=0)
 - [ ] Resnet-50-8S
 - [ ] Resnet-101-8S
 - [ ] Resnet-152-8S
