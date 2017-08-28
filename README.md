@@ -236,6 +236,8 @@ We created a couple of [demos](examples) where we grab frames using opencv and c
 or segment them.
 
 Here you can see and example of real-time segmentation:
+
+
 ![Alt text](examples/segmentation_demo_preview.gif?raw=true "Title")
 
 ## Installation
