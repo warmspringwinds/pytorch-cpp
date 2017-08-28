@@ -16,6 +16,7 @@ The structure of the project and CMake will be changed in a future, as it is not
 <a href='#some-examples'>Examples</a><br>
 <a href='#implemented-layers'>Implemented layers</a><br>
 <a href='#implemented-models'>Implemented models</a><br>
+<a href='#demos'>Demos</a><br>
 <a href='#installation'>Installation</a><br>
 <a href='#about'>About</a><br>
 <a href='#contributors'>Contributors</a><br>
@@ -229,6 +230,12 @@ correctness.
 - [ ] FCN-16s
 - [ ] FCN-8s
 
+## Demos
+
+We created a couple of [demos](examples) where we grab frames using opencv and classify
+or segment them.
+
+Here you can see and example of real-time segmentation:
 ![Alt text](examples/segmentation_demo_preview.gif?raw=true "Title")
 
 ## Installation
