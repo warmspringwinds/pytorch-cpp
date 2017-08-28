@@ -56,7 +56,7 @@ int main()
 
   auto net = torch::resnet34_8s_pascal_voc();
 
-  net->load_weights("../resnet34_fcn_new.h5");
+  net->load_weights("../resnet34_fcn_pascal.h5");
   net->cuda();
 
   VideoCapture cap(0); // open the default camera
