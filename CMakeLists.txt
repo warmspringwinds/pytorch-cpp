@@ -72,5 +72,14 @@ TARGET_LINK_LIBRARIES(pytorch_results_deviation ${ATen_BINARY_DIR}/src/ATen/libA
 ADD_EXECUTABLE(opencv_realtime_webcam_imagenet_classification examples/opencv_realtime_webcam_imagenet_classification.cpp)
 TARGET_LINK_LIBRARIES(opencv_realtime_webcam_imagenet_classification ${ATen_BINARY_DIR}/src/ATen/libATen.so.1 ${CUDA_LIBRARIES} ${_hdf5_libs} ${OpenCV_LIBS})
 
+ADD_EXECUTABLE(opencv_blank_webcam_stream examples/opencv_blank_webcam_stream.cpp)
+TARGET_LINK_LIBRARIES(opencv_blank_webcam_stream ${ATen_BINARY_DIR}/src/ATen/libATen.so.1 ${CUDA_LIBRARIES} ${_hdf5_libs} ${OpenCV_LIBS})
+
+ADD_EXECUTABLE(opencv_realtime_video_instrument_segmentation examples/opencv_realtime_video_instrument_segmentation.cpp)
+TARGET_LINK_LIBRARIES(opencv_realtime_video_instrument_segmentation ${ATen_BINARY_DIR}/src/ATen/libATen.so.1 ${CUDA_LIBRARIES} ${_hdf5_libs} ${OpenCV_LIBS})
+
+ADD_EXECUTABLE(opencv_realtime_webcam_instrument_segmentation examples/opencv_realtime_webcam_instrument_segmentation.cpp)
+TARGET_LINK_LIBRARIES(opencv_realtime_webcam_instrument_segmentation ${ATen_BINARY_DIR}/src/ATen/libATen.so.1 ${CUDA_LIBRARIES} ${_hdf5_libs} ${OpenCV_LIBS})
+
 
 #add_subdirectory(examples)

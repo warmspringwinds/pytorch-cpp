@@ -1781,6 +1781,18 @@ namespace torch
       return make_shared<torch::Resnet34_8s>(21);
     }
 
+    Module::Ptr resnet18_8s_surgical_binary()
+    {
+
+      return make_shared<torch::Resnet18_8s>(2);
+    }
+
+    Module::Ptr resnet34_8s_surgical_binary()
+    {
+
+      return make_shared<torch::Resnet34_8s>(2);
+    }
+
 
 
 }
