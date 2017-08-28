@@ -274,9 +274,12 @@ these steps:
 
 ### Problems with the build
 
+It was noticed that if you have anaconda installed and your ```PATH``` variable is modified to include
+its folder, it can lead to failed buid (caused by the fact that anaconda uses different version of ```gcc```).
+To solve this problem, remove the path to anaconda from ```PATH``` for the time of the build.
+
 If you face any problems or some steps are not clear, please open an issue. Note: every time you enter the ```cmake-gui```
 press ```configure``` first, then specify your ```CUDA``` path and then press ```generate```, after that you can build.
-
 
 
 ## About
