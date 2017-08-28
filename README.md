@@ -229,6 +229,7 @@ correctness.
 - [ ] FCN-16s
 - [ ] FCN-8s
 
+![Alt text](examples/segmentation_demo_preview.gif?raw=true "Title")
 
 ## Installation
 
