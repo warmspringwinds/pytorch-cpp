@@ -258,9 +258,12 @@ Follow these steps to install it:
 
 We use ```HDF5``` to be able to [easily convert](convert_weights.ipynb) weigths between ```Pytorch``` and ```Pytorch-C++```.
 
-0. ```wget https://support.hdfgroup.org/ftp/HDF5/current18/src/CMake-hdf5-1.8.19.tar.gz; tar xvzf CMake-hdf5-1.8.19.tar.gz```
+0. ```wget https://support.hdfgroup.org/ftp/HDF5/current18/src/CMake-hdf5-1.8.20.tar.gz; tar xvzf CMake-hdf5-1.8.19.tar.gz```
 1. ```cd CMake-hdf5-1.8.19; ./build-unix.sh```
 2. ```cd ../``` -- return back.
+
+Additional information: ```HDF5``` gets updated from time to time and there is a good chance that my link might be outdated.
+If it's the case, grab the latest version from [the official website](https://support.hdfgroup.org/ftp/HDF5/current18/src/). 
 
 ### Opencv
 
