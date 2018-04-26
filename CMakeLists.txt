@@ -42,16 +42,16 @@ ${ATen_BINARY_DIR}/src/ATen)
 INCLUDE_DIRECTORIES(${CUDA_INCLUDE_DIRS})
 
 include_directories(
-${CMAKE_CURRENT_SOURCE_DIR}/CMake-hdf5-1.8.19/hdf5-1.8.19/src
-${CMAKE_CURRENT_SOURCE_DIR}/CMake-hdf5-1.8.19/hdf5-1.8.19/c++/src
-${CMAKE_CURRENT_SOURCE_DIR}/CMake-hdf5-1.8.19/build
+${CMAKE_CURRENT_SOURCE_DIR}/CMake-hdf5-1.8.20/hdf5-1.8.20/src
+${CMAKE_CURRENT_SOURCE_DIR}/CMake-hdf5-1.8.20/hdf5-1.8.20/c++/src
+${CMAKE_CURRENT_SOURCE_DIR}/CMake-hdf5-1.8.20/build
 )
 
 set(_hdf5_libs
-${CMAKE_CURRENT_SOURCE_DIR}/CMake-hdf5-1.8.19/build/bin/libhdf5_cpp.a
-${CMAKE_CURRENT_SOURCE_DIR}/CMake-hdf5-1.8.19/build/bin/libhdf5.a
-${CMAKE_CURRENT_SOURCE_DIR}/CMake-hdf5-1.8.19/build/bin/libz.a
-${CMAKE_CURRENT_SOURCE_DIR}/CMake-hdf5-1.8.19/build/bin/libszip.a
+${CMAKE_CURRENT_SOURCE_DIR}/CMake-hdf5-1.8.20/build/bin/libhdf5_cpp.a
+${CMAKE_CURRENT_SOURCE_DIR}/CMake-hdf5-1.8.20/build/bin/libhdf5.a
+${CMAKE_CURRENT_SOURCE_DIR}/CMake-hdf5-1.8.20/build/bin/libz.a
+${CMAKE_CURRENT_SOURCE_DIR}/CMake-hdf5-1.8.20/build/bin/libszip.a
 -ldl
 )
 
