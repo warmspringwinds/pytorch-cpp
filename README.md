@@ -263,7 +263,9 @@ We use ```HDF5``` to be able to [easily convert](convert_weights.ipynb) weigths 
 2. ```cd ../``` -- return back.
 
 Additional information: ```HDF5``` gets updated from time to time and there is a good chance that my link might be outdated.
-If it's the case, grab the latest version from [the official website](https://support.hdfgroup.org/ftp/HDF5/current18/src/). 
+If it's the case, grab the latest version from [the official website](https://support.hdfgroup.org/ftp/HDF5/current18/src/).
+
+Also, after you do this don't forget to update the ```CMakelists.txt``` file with the new hdf5 folder name.
 
 ### Opencv
 
