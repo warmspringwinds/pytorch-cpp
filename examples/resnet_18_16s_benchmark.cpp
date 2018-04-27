@@ -1,6 +1,6 @@
 /*
 Example shows how to measure the average execution time spent on one image.
-Here we test resnet 18 with the output stride of 8 which shows execution time of 25 ms
+Here we test resnet 18 with the output stride of 16 which shows execution time of 10.42 ms
 per frame of size 512x512 on average.
 */
 
@@ -71,7 +71,7 @@ int main()
     
   cout << "Average execution time: " << overall_miliseconds_count / float(number_of_iterations) << " ms" << endl;
     
-  // On our system it outpts: 25ms per frame.
+  // On our system it outpts: 10.42 ms per frame.
     
   return 0;
 
