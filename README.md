@@ -3,7 +3,7 @@
 ```Pytorch-C++``` is a simple C++ 11 library which provides a [Pytorch](http://pytorch.org/)-like
 interface for building neural networks and inference (so far only forward pass is supported). The library
 respects the semantics of ```torch.nn``` module of PyTorch. Models from [pytorch/vision](https://github.com/pytorch/vision)
-are supported and can be [easily converted](convert_weights.ipynb).
+are supported and can be [easily converted](convert_weights.ipynb). We also support all the models from [our image segmentation repository](https://github.com/warmspringwinds/pytorch-segmentation-detection) (scroll down for the gif with example output of one of our segmentation models).
 
 The library heavily relies on an amazing [ATen](https://github.com/zdevito/ATen) library and was inspired by
 [cunnproduction](https://github.com/szagoruyko/cunnproduction).
