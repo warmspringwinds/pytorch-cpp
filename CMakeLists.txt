@@ -72,6 +72,9 @@ TARGET_LINK_LIBRARIES(pytorch_results_deviation ${ATen_BINARY_DIR}/src/ATen/libA
 ADD_EXECUTABLE(resnet_18_8s_benchmark examples/resnet_18_8s_benchmark.cpp)
 TARGET_LINK_LIBRARIES(resnet_18_8s_benchmark ${ATen_BINARY_DIR}/src/ATen/libATen.so.1 ${CUDA_LIBRARIES} ${_hdf5_libs})
 
+ADD_EXECUTABLE(resnet_18_16s_benchmark examples/resnet_18_16s_benchmark.cpp)
+TARGET_LINK_LIBRARIES(resnet_18_16s_benchmark ${ATen_BINARY_DIR}/src/ATen/libATen.so.1 ${CUDA_LIBRARIES} ${_hdf5_libs})
+
 ADD_EXECUTABLE(opencv_realtime_webcam_imagenet_classification examples/opencv_realtime_webcam_imagenet_classification.cpp)
 TARGET_LINK_LIBRARIES(opencv_realtime_webcam_imagenet_classification ${ATen_BINARY_DIR}/src/ATen/libATen.so.1 ${CUDA_LIBRARIES} ${_hdf5_libs} ${OpenCV_LIBS})
 

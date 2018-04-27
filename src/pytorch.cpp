@@ -1632,6 +1632,49 @@ namespace torch
           return full_prediction;
         }
     };
+    
+    
+    class Resnet18_16s : public Module
+    {
+
+      public:
+
+        int num_classes;
+        Module::Ptr resnet18_16s;
+        
+        Resnet18_16s(int num_classes=21):
+                    num_classes(num_classes)
+
+        {
+
+          resnet18_16s = torch::resnet18(num_classes,    
+                                        true,           /* fully convolutional model */
+                                        16,             /* we want subsampled by 16 prediction*/
+                                        true);          /* remove average pooling layer */
+
+          // Adding a module with this name to be able to easily load
+          // weights from pytorch models
+          add_module("resnet18_16s", resnet18_16s);
+
+        }
+
+        Tensor forward(Tensor input)
+        {
+
+          // probably we can add some utility functions to add softmax on top 
+          // resize the ouput in a proper way
+
+          // input is a tensor of shape batch_size x #channels x height x width
+          int output_height = input.size(2);
+          int output_width = input.size(3);
+
+          auto subsampled_prediction = resnet18_16s->forward(input);
+
+          auto full_prediction = upsample_bilinear(subsampled_prediction, output_height, output_width);
+
+          return full_prediction;
+        }
+    };
 
 
     class Resnet34_8s : public Module
@@ -1773,6 +1816,12 @@ namespace torch
     {
 
       return make_shared<torch::Resnet18_8s>(21);
+    }
+    
+    Module::Ptr resnet18_16s_pascal_voc()
+    {
+
+      return make_shared<torch::Resnet18_16s>(21);
     }
 
     Module::Ptr resnet34_8s_pascal_voc()
