@@ -1,6 +1,6 @@
 /*
 Example shows how to measure the average execution time spent on one image.
-Here we test resnet 18 with the output stride of 8 which shows execution time of 25 ms
+Here we test resnet 9 with the output stride of 8 which shows execution time of 12 ms
 per frame of size 512x512 on average.
 */
 
