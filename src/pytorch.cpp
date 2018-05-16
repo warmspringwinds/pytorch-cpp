@@ -1586,11 +1586,55 @@ namespace torch
 
     Module::Ptr resnet18(int num_classes, bool fully_conv, int output_stride, bool remove_avg_pool);
     Module::Ptr resnet34(int num_classes, bool fully_conv, int output_stride, bool remove_avg_pool);
+    Module::Ptr resnet9(int num_classes, bool fully_conv, int output_stride, bool remove_avg_pool);
 
 
     // This one is just to build architecture, we can create functions to actually load
     // pretrained models like in pytorch
+    
+    
+    class Resnet9_8s : public Module
+    {
 
+      public:
+
+        int num_classes;
+        Module::Ptr resnet9_8s;
+        
+        Resnet9_8s(int num_classes=21):
+                    num_classes(num_classes)
+
+        {
+
+          resnet9_8s = torch::resnet9(num_classes,    
+                                        true,           /* fully convolutional model */
+                                        8,              /* we want subsampled by 8 prediction*/
+                                        true);          /* remove average pooling layer */
+
+          // Adding a module with this name to be able to easily load
+          // weights from pytorch models
+          add_module("resnet9_8s", resnet9_8s);
+
+        }
+
+        Tensor forward(Tensor input)
+        {
+
+          // probably we can add some utility functions to add softmax on top 
+          // resize the ouput in a proper way
+
+          // input is a tensor of shape batch_size x #channels x height x width
+          int output_height = input.size(2);
+          int output_width = input.size(3);
+
+          auto subsampled_prediction = resnet9_8s->forward(input);
+
+          auto full_prediction = upsample_bilinear(subsampled_prediction, output_height, output_width);
+
+          return full_prediction;
+        }
+    };
+    
     class Resnet18_8s : public Module
     {
 
@@ -1779,6 +1823,17 @@ namespace torch
                                                   remove_avg_pool,
                                                   output_stride ));
     }
+    
+    Module::Ptr resnet9(int num_classes=1000, bool fully_conv=false, int output_stride=32, bool remove_avg_pool=false)
+    {
+
+      return std::shared_ptr<torch::ResNet<torch::BasicBlock>>(
+             new torch::ResNet<torch::BasicBlock>({1, 1, 1, 1},
+                                                  num_classes,
+                                                  fully_conv,
+                                                  remove_avg_pool,
+                                                  output_stride ));
+    }
 
 
     // Maybe add new options like add_softmax?,
@@ -1830,6 +1885,10 @@ namespace torch
       return make_shared<torch::Resnet34_8s>(21);
     }
 
+    Module::Ptr resnet9_8s_endovis_binary()
+    {
 
+      return make_shared<torch::Resnet9_8s>(2);
+    }
 
 }
